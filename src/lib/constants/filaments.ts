@@ -1,0 +1,36 @@
+import type { Filament, FilamentOption } from '@/lib/types';
+
+export const FILAMENT_OPTIONS: FilamentOption[] = [
+  { id: 'fil-pla-white', name: 'PLA White', localizedName: 'PLA לבן', material: 'PLA', colorHex: '#FFFFFF', colorName: 'White', localizedColorName: 'לבן', priceModifier: 0, inStock: true, isPopular: true },
+  { id: 'fil-pla-black', name: 'PLA Black', localizedName: 'PLA שחור', material: 'PLA', colorHex: '#1A1A1A', colorName: 'Black', localizedColorName: 'שחור', priceModifier: 0, inStock: true, isPopular: true },
+  { id: 'fil-pla-red', name: 'PLA Red', localizedName: 'PLA אדום', material: 'PLA', colorHex: '#DC2626', colorName: 'Red', localizedColorName: 'אדום', priceModifier: 0, inStock: true, isPopular: true },
+  { id: 'fil-pla-blue', name: 'PLA Blue', localizedName: 'PLA כחול', material: 'PLA', colorHex: '#2563EB', colorName: 'Blue', localizedColorName: 'כחול', priceModifier: 0, inStock: true, isPopular: true },
+  { id: 'fil-pla-green', name: 'PLA Green', localizedName: 'PLA ירוק', material: 'PLA', colorHex: '#16A34A', colorName: 'Green', localizedColorName: 'ירוק', priceModifier: 0, inStock: true, isPopular: false },
+  { id: 'fil-pla-yellow', name: 'PLA Yellow', localizedName: 'PLA צהוב', material: 'PLA', colorHex: '#EAB308', colorName: 'Yellow', localizedColorName: 'צהוב', priceModifier: 0, inStock: true, isPopular: false },
+  { id: 'fil-pla-orange', name: 'PLA Orange', localizedName: 'PLA כתום', material: 'PLA', colorHex: '#EA580C', colorName: 'Orange', localizedColorName: 'כתום', priceModifier: 0, inStock: true, isPopular: false },
+  { id: 'fil-pla-purple', name: 'PLA Purple', localizedName: 'PLA סגול', material: 'PLA', colorHex: '#9333EA', colorName: 'Purple', localizedColorName: 'סגול', priceModifier: 0, inStock: false, isPopular: false },
+  { id: 'fil-pla-pink', name: 'PLA Pink', localizedName: 'PLA ורוד', material: 'PLA', colorHex: '#EC4899', colorName: 'Pink', localizedColorName: 'ורוד', priceModifier: 0, inStock: true, isPopular: true },
+  { id: 'fil-pla-gray', name: 'PLA Gray', localizedName: 'PLA אפור', material: 'PLA', colorHex: '#6B7280', colorName: 'Gray', localizedColorName: 'אפור', priceModifier: 0, inStock: true, isPopular: false },
+  { id: 'fil-petg-white', name: 'PETG White', localizedName: 'PETG לבן', material: 'PETG', colorHex: '#F5F5F5', colorName: 'White', localizedColorName: 'לבן', priceModifier: 5, inStock: true, isPopular: false },
+  { id: 'fil-petg-black', name: 'PETG Black', localizedName: 'PETG שחור', material: 'PETG', colorHex: '#0A0A0A', colorName: 'Black', localizedColorName: 'שחור', priceModifier: 5, inStock: true, isPopular: true },
+  { id: 'fil-petg-transparent', name: 'PETG Transparent', localizedName: 'PETG שקוף', material: 'PETG', colorHex: '#E0F2FE', colorName: 'Transparent', localizedColorName: 'שקוף', priceModifier: 8, inStock: true, isPopular: false },
+  { id: 'fil-abs-white', name: 'ABS White', localizedName: 'ABS לבן', material: 'ABS', colorHex: '#FAFAFA', colorName: 'White', localizedColorName: 'לבן', priceModifier: 3, inStock: true, isPopular: false },
+  { id: 'fil-abs-black', name: 'ABS Black', localizedName: 'ABS שחור', material: 'ABS', colorHex: '#171717', colorName: 'Black', localizedColorName: 'שחור', priceModifier: 3, inStock: true, isPopular: false },
+  { id: 'fil-tpu-black', name: 'TPU Black (Flexible)', localizedName: 'TPU שחור (גמיש)', material: 'TPU', colorHex: '#111111', colorName: 'Black', localizedColorName: 'שחור', priceModifier: 15, inStock: true, isPopular: false },
+];
+
+export const FILAMENTS: Filament[] = FILAMENT_OPTIONS.map((opt) => ({
+  id: opt.id,
+  material: opt.material,
+  brand: 'Modelo Print',
+  colorHex: opt.colorHex,
+  colorName: opt.colorName,
+  localizedColorName: opt.localizedColorName,
+  pricePerGram: opt.material === 'PLA' ? 0.12 : opt.material === 'PETG' ? 0.15 : opt.material === 'ABS' ? 0.13 : 0.25,
+  stockGrams: opt.inStock ? 5000 : 0,
+  minStockThreshold: 500,
+  inStock: opt.inStock,
+  isActive: true,
+  createdAt: '2025-01-01T00:00:00Z',
+  updatedAt: '2025-03-01T00:00:00Z',
+}));

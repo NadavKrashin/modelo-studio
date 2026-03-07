@@ -1,7 +1,14 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  reactStrictMode: true,
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: '**.thingiverse.com' },
+      { protocol: 'https', hostname: '**.printables.com' },
+      { protocol: 'https', hostname: '**.myminifactory.com' },
+    ],
+  },
 };
 
 export default nextConfig;
