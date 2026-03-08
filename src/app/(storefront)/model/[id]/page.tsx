@@ -5,6 +5,9 @@ import { notFound } from 'next/navigation';
 import { ModelCustomizationPanel } from './ModelCustomizationPanel';
 import { ModelGallery } from './ModelGallery';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 interface ModelPageProps {
   params: Promise<{ id: string }>;
 }
@@ -73,11 +76,6 @@ export default async function ModelPage({ params }: ModelPageProps) {
               <h1 className="text-2xl md:text-3xl font-extrabold text-foreground leading-tight mb-3" dir="auto">
                 {model.localizedName}
               </h1>
-              {model.localizedDescription && (
-                <p className="text-muted leading-relaxed text-[15px] line-clamp-6" dir="auto">
-                  {model.localizedDescription}
-                </p>
-              )}
             </div>
 
             {/* Tags */}

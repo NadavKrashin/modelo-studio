@@ -1,8 +1,9 @@
 import type { CatalogEntry, ProviderResult, NormalizedModel } from '@/lib/types';
-import { isCommerciallyUsable } from '@/lib/types/model';
+import { isStorefrontEligible, storefrontEligibilityReason } from '@/lib/types/model';
 import { isStale, CATALOG_DEFAULTS } from '@/lib/types/catalog';
 import type { ProviderRegistry } from '@/lib/providers/registry';
 import type { CatalogStore } from './catalog-store';
+import type { FirestoreCatalogCache } from './firestore-catalog-cache';
 
 const TAG = '[CatalogService]';
 
@@ -20,6 +21,7 @@ export class CatalogService {
   constructor(
     private store: CatalogStore,
     private registry: ProviderRegistry,
+    private persistence?: FirestoreCatalogCache,
   ) {}
 
   // ─── Ingestion ─────────────────────────────────────────────
@@ -33,6 +35,7 @@ export class CatalogService {
 
     const entries = results.map((r) => this.toEntry(r));
     this.store.bulkUpsert(entries);
+    this.persistEntries(entries);
     return entries;
   }
 
@@ -62,31 +65,27 @@ export class CatalogService {
     const cached = this.store.get(id);
 
     if (cached) {
+      const pid = cached.catalog.providerId;
       const needsLicenseEnrichment = cached.license.commercialUse === 'unknown'
-        && cached.catalog.providerId !== 'local';
+        && !!pid;
 
-      if (!isCommerciallyUsable(cached)) {
+      if (!isStorefrontEligible(cached, pid)) {
         if (cached.license.commercialUse === 'restricted') {
           if (process.env.NODE_ENV === 'development') {
-            console.log(
-              `${TAG} Blocked storefront access to "${cached.name}" (${id}) — restricted: ${cached.license.commercialUseReason ?? cached.license.spdxId}`,
-            );
+            console.log(`${TAG} ${storefrontEligibilityReason(cached, pid)} — "${cached.name}" (${id})`);
           }
           return null;
         }
 
-        // Unknown license — try enriching from the provider before giving up
         if (needsLicenseEnrichment) {
           if (process.env.NODE_ENV === 'development') {
             console.log(`${TAG} Model "${cached.name}" (${id}) has unknown license — enriching from provider`);
           }
           const enriched = await this.enrichFromProvider(cached);
           const final = enriched ?? cached;
-          if (!isCommerciallyUsable(final)) {
+          if (!isStorefrontEligible(final, pid)) {
             if (process.env.NODE_ENV === 'development') {
-              console.log(
-                `${TAG} Enriched model "${final.name}" (${id}) still not commercially usable — ${final.license.commercialUse}: ${final.license.commercialUseReason ?? final.license.spdxId}`,
-              );
+              console.log(`${TAG} ${storefrontEligibilityReason(final, pid)} — "${final.name}" (${id})`);
             }
             return null;
           }
@@ -95,6 +94,10 @@ export class CatalogService {
         }
 
         return null;
+      }
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`${TAG} ${storefrontEligibilityReason(cached, pid)} — "${cached.name}" (${id})`);
       }
 
       this.store.recordView(id);
@@ -107,9 +110,9 @@ export class CatalogService {
 
       if (cached.catalog.importStatus === 'discovered' || cached.catalog.importStatus === 'metadata_cached') {
         const enriched = await this.enrichFromProvider(cached);
-        if (enriched && !isCommerciallyUsable(enriched)) {
+        if (enriched && !isStorefrontEligible(enriched, pid)) {
           if (process.env.NODE_ENV === 'development') {
-            console.log(`${TAG} Re-validated model "${enriched.name}" is no longer commercially usable — suppressing`);
+            console.log(`${TAG} Re-validated "${enriched.name}" no longer eligible — ${storefrontEligibilityReason(enriched, pid)}`);
           }
           return null;
         }
@@ -119,12 +122,20 @@ export class CatalogService {
       return cached;
     }
 
-    const fetched = await this.fetchFromProviders(id);
-    if (fetched && !isCommerciallyUsable(fetched)) {
+    const persisted = await this.loadFromPersistence(id);
+    if (persisted) {
+      this.store.upsert(persisted);
+      this.store.recordView(id);
       if (process.env.NODE_ENV === 'development') {
-        console.log(
-          `${TAG} Fetched model "${fetched.name}" (${id}) excluded — ${fetched.license.commercialUse}: ${fetched.license.commercialUseReason ?? fetched.license.spdxId}`,
-        );
+        console.log(`${TAG} Cache hit in Firestore for "${persisted.name}" (${id})`);
+      }
+      return persisted;
+    }
+
+    const fetched = await this.fetchFromProviders(id);
+    if (fetched && !isStorefrontEligible(fetched, fetched.catalog.providerId)) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`${TAG} Fetched "${fetched.name}" (${id}) — ${storefrontEligibilityReason(fetched, fetched.catalog.providerId)}`);
       }
       return null;
     }
@@ -146,9 +157,9 @@ export class CatalogService {
     for (const entry of stale) {
       try {
         const provider = this.registry.get(entry.catalog.providerId);
-        if (!provider || entry.catalog.providerId === 'local') {
-          // Local entries don't need refresh — mark them as fresh
+        if (!provider) {
           this.store.upsert(entry);
+          this.persistEntry(entry);
           continue;
         }
 
@@ -158,6 +169,7 @@ export class CatalogService {
           fresh.catalog.importStatus = entry.catalog.importStatus;
           fresh.catalog.viewCount = entry.catalog.viewCount;
           this.store.upsert(fresh);
+          this.persistEntry(fresh);
           refreshed++;
         }
       } catch (err) {
@@ -187,15 +199,14 @@ export class CatalogService {
 
   /** Converts a ProviderResult into a CatalogEntry. */
   private toEntry(result: ProviderResult): CatalogEntry {
-    const isLocal = result.providerId === 'local';
     return {
       ...result.model,
       catalog: {
         providerId: result.providerId,
         importedAt: new Date().toISOString(),
         lastRefreshedAt: new Date().toISOString(),
-        staleAfterMs: isLocal ? CATALOG_DEFAULTS.localStaleTtlMs : CATALOG_DEFAULTS.externalStaleTtlMs,
-        importStatus: isLocal ? 'imported' : 'metadata_cached',
+        staleAfterMs: CATALOG_DEFAULTS.externalStaleTtlMs,
+        importStatus: 'metadata_cached',
         viewCount: 0,
       },
     };
@@ -218,6 +229,7 @@ export class CatalogService {
           if (result) {
             const entry = this.toEntry(result);
             this.store.upsert(entry);
+            this.persistEntry(entry);
             this.store.recordView(entry.id);
             return entry;
           }
@@ -234,6 +246,7 @@ export class CatalogService {
         if (result) {
           const entry = this.toEntry(result);
           this.store.upsert(entry);
+          this.persistEntry(entry);
           this.store.recordView(entry.id);
           return entry;
         }
@@ -251,7 +264,7 @@ export class CatalogService {
    */
   private async enrichFromProvider(entry: CatalogEntry): Promise<CatalogEntry | null> {
     const provider = this.registry.get(entry.catalog.providerId);
-    if (!provider || entry.catalog.providerId === 'local') return null;
+    if (!provider) return null;
 
     try {
       const result = await provider.getModel(entry.externalId);
@@ -262,6 +275,7 @@ export class CatalogService {
       enriched.catalog.viewCount = entry.catalog.viewCount;
       enriched.catalog.importedAt = entry.catalog.importedAt;
       this.store.upsert(enriched);
+      this.persistEntry(enriched);
       return enriched;
     } catch {
       return null;
@@ -269,8 +283,6 @@ export class CatalogService {
   }
 
   private refreshEntryInBackground(entry: CatalogEntry): void {
-    if (entry.catalog.providerId === 'local') return;
-
     const provider = this.registry.get(entry.catalog.providerId);
     if (!provider) return;
 
@@ -281,7 +293,32 @@ export class CatalogService {
         fresh.catalog.viewCount = entry.catalog.viewCount;
         fresh.catalog.importedAt = entry.catalog.importedAt;
         this.store.upsert(fresh);
+        this.persistEntry(fresh);
       }
     }).catch(() => {});
+  }
+
+  private async loadFromPersistence(id: string): Promise<CatalogEntry | null> {
+    if (!this.persistence) return null;
+    try {
+      return await this.persistence.findById(id);
+    } catch (err) {
+      console.warn(`${TAG} Firestore cache read failed for "${id}":`, (err as Error).message);
+      return null;
+    }
+  }
+
+  private persistEntries(entries: CatalogEntry[]): void {
+    if (!this.persistence || entries.length === 0) return;
+    this.persistence.upsertEntries(entries).catch((err) => {
+      console.warn(`${TAG} Firestore cache batch write failed:`, (err as Error).message);
+    });
+  }
+
+  private persistEntry(entry: CatalogEntry): void {
+    if (!this.persistence) return;
+    this.persistence.upsertEntry(entry).catch((err) => {
+      console.warn(`${TAG} Firestore cache write failed for "${entry.id}":`, (err as Error).message);
+    });
   }
 }

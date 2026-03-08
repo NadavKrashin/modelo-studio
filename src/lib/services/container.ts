@@ -1,7 +1,9 @@
-import { MockOrderRepository } from '@/lib/repositories/mock-order-repository';
-import { MockFilamentRepository } from '@/lib/repositories/mock-filament-repository';
-import { MockCategoryRepository } from '@/lib/repositories/mock-category-repository';
-import { MockAnalyticsRepository } from '@/lib/repositories/mock-analytics-repository';
+import { FirestoreOrderRepository } from '@/lib/repositories/firestore-order-repository';
+import { FirestoreAnalyticsRepository } from '@/lib/repositories/firestore-analytics-repository';
+import { StaticFilamentRepository } from '@/lib/repositories/static-filament-repository';
+import { StaticCategoryRepository } from '@/lib/repositories/static-category-repository';
+import { InMemoryOrderRepository } from '@/lib/repositories/in-memory-order-repository';
+import { InMemoryAnalyticsRepository } from '@/lib/repositories/in-memory-analytics-repository';
 import { OrderService } from './order-service';
 import { PricingService } from './pricing-service';
 import { SearchService } from './search-service';
@@ -9,8 +11,9 @@ import { ProviderRegistry, ProviderCache } from '@/lib/providers';
 import { ThingiverseProvider } from '@/lib/providers/thingiverse';
 import { MyMiniFactoryProvider } from '@/lib/providers/myminifactory';
 import { getThingiverseConfig, getMyMiniFactoryConfig, validateProviderConfigs } from '@/lib/config/providers';
-import { CatalogStore, CatalogService } from '@/lib/catalog';
+import { CatalogStore, CatalogService, FirestoreCatalogCache } from '@/lib/catalog';
 import { InMemorySearchAnalytics } from '@/lib/search/search-analytics';
+import { isFirebaseAdminConfigured } from '@/lib/firebase/admin';
 import type {
   OrderRepository,
   FilamentRepository,
@@ -32,6 +35,7 @@ class ServiceContainer {
 
   readonly catalogStore: CatalogStore;
   readonly catalogService: CatalogService;
+  readonly catalogPersistence: FirestoreCatalogCache | null;
 
   readonly searchAnalytics: SearchAnalyticsBackend;
 
@@ -46,12 +50,20 @@ class ServiceContainer {
       const log = w.level === 'error' ? console.error : console.warn;
       log(`${TAG} [${w.provider}] ${w.message}`);
     }
+    const firebaseConfigured = isFirebaseAdminConfigured();
+    if (!firebaseConfigured) {
+      console.warn(
+        `${TAG} Firebase Admin not configured; Firestore-backed persistence for orders/analytics/catalog cache is disabled until env vars are set.`,
+      );
+    }
 
     // ── Repositories ───────────────────────────────────────
-    this.orders = new MockOrderRepository();
-    this.filaments = new MockFilamentRepository();
-    this.categories = new MockCategoryRepository();
-    this.analytics = new MockAnalyticsRepository(this.orders);
+    this.orders = firebaseConfigured ? new FirestoreOrderRepository() : new InMemoryOrderRepository();
+    this.filaments = new StaticFilamentRepository();
+    this.categories = new StaticCategoryRepository();
+    this.analytics = firebaseConfigured
+      ? new FirestoreAnalyticsRepository(this.orders)
+      : new InMemoryAnalyticsRepository(this.orders);
 
     // ── Provider infrastructure (real providers only) ──────
     this.providerCache = new ProviderCache();
@@ -79,7 +91,8 @@ class ServiceContainer {
 
     // ── Catalog layer ──────────────────────────────────────
     this.catalogStore = new CatalogStore();
-    this.catalogService = new CatalogService(this.catalogStore, this.providerRegistry);
+    this.catalogPersistence = firebaseConfigured ? new FirestoreCatalogCache() : null;
+    this.catalogService = new CatalogService(this.catalogStore, this.providerRegistry, this.catalogPersistence ?? undefined);
 
     // ── Search analytics ───────────────────────────────────
     this.searchAnalytics = new InMemorySearchAnalytics();
@@ -101,7 +114,7 @@ class ServiceContainer {
       `${TAG} Initialized — ${this.providerRegistry.size} providers (real: ${realProviders.join(', ') || 'none'}), ` +
       `${catalogStats.totalEntries} catalog entries (${Object.entries(catalogStats.byProvider).map(([k, v]) => `${k}:${v}`).join(', ') || 'empty'}), ` +
       `${catalogStats.commerciallyExcluded} excluded by commercial-license gate, ` +
-      `mock items: 0 (mock data removed)`,
+      `persistence=${this.catalogPersistence ? 'firestore' : 'in-memory-only (configure Firebase Admin env)'}`,
     );
   }
 

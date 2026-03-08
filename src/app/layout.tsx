@@ -15,8 +15,9 @@ export const metadata: Metadata = {
   keywords: ['הדפסת תלת מימד', '3D printing', 'מודלים', 'הדפסה בהזמנה'],
   manifest: '/manifest.json',
   icons: {
-    icon: '/icons/icon-192.png',
-    apple: '/icons/apple-touch-icon.png',
+    icon: [{ url: '/icons/favicon.png', type: 'image/png' }],
+    shortcut: ['/icons/favicon.png'],
+    apple: [{ url: '/icons/favicon.png', type: 'image/png' }],
   },
   openGraph: {
     title: 'Modelo - הדפסת תלת מימד בהזמנה אישית',

@@ -9,6 +9,7 @@ import { CATEGORIES } from '@/lib/constants';
 import { CategoryIcon } from '@/components/ui/CategoryIcon';
 import { SearchResultCard } from '@/components/ui/SearchResultCard';
 import { ModelGridSkeleton } from '@/components/ui/Skeletons';
+import { useSearchUiStore } from '@/lib/store';
 
 interface SearchApiResponse {
   items: ModelSummary[];
@@ -25,7 +26,11 @@ interface SearchApiResponse {
     cacheKey: string;
     resultCount: number;
     totalCount: number;
-    mockItemCount: number;
+    totalQueryScopedResults?: number;
+    selectedCategory?: string | null;
+    queryScopedCategoryCounts?: Record<string, number>;
+    displayedResultsCount?: number;
+    syntheticItemCount: number;
     realItemCount: number;
     dataSource: string;
     categoryCounts?: Record<string, number>;
@@ -51,9 +56,12 @@ export function SearchPageClient() {
   const [dataSource, setDataSource] = useState<'network' | 'cache' | 'unknown'>('unknown');
   const [fetchDurationMs, setFetchDurationMs] = useState(0);
   const [staleIgnored, setStaleIgnored] = useState(false);
+  const [stableCategoryCounts, setStableCategoryCounts] = useState<Record<string, number>>({});
+  const [stableQueryScopedTotal, setStableQueryScopedTotal] = useState(0);
 
   const activeRequestId = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const setSearchContext = useSearchUiStore((state) => state.setSearchContext);
 
   const fetchResults = useCallback(async (q: string, cat: string | undefined, pg: number) => {
     const requestId = ++activeRequestId.current;
@@ -110,6 +118,11 @@ export function SearchPageClient() {
       setResult(data);
       setFetchState('success');
       setDataSource(data.meta?.localOnly ? 'cache' : 'network');
+      if (data.meta?.categoryCounts) {
+        setStableCategoryCounts(data.meta.categoryCounts);
+        const scopedTotal = Object.values(data.meta.categoryCounts).reduce((sum, n) => sum + n, 0);
+        setStableQueryScopedTotal(scopedTotal);
+      }
 
       if (data._debug) setDebug(data._debug);
 
@@ -131,6 +144,11 @@ export function SearchPageClient() {
   }, []);
 
   useEffect(() => {
+    setSearchContext({
+      query,
+      selectedCategory: category,
+      page,
+    });
     fetchResults(query, category, page);
 
     return () => {
@@ -138,13 +156,40 @@ export function SearchPageClient() {
         abortControllerRef.current.abort();
       }
     };
-  }, [query, category, page, fetchResults]);
+  }, [query, category, page, fetchResults, setSearchContext]);
 
-  const categoryCounts = result?.meta?.categoryCounts ?? {};
+  const categoryCounts = result?.meta?.categoryCounts ?? stableCategoryCounts;
+  const queryScopedTotal = debug?.totalQueryScopedResults ?? stableQueryScopedTotal;
   const activeCategories = CATEGORIES.filter((c) => c.isActive).map((c) => ({
     ...c,
     modelCount: categoryCounts[c.id] ?? 0,
   }));
+  const totalPages = result ? Math.max(1, Math.ceil(result.total / result.pageSize)) : 1;
+  const currentPage = result?.page ?? page;
+
+  const buildSearchHref = (targetPage: number): string => {
+    const params = new URLSearchParams();
+    if (query) params.set('q', query);
+    if (category) params.set('category', category);
+    params.set('page', String(targetPage));
+    return `/search?${params.toString()}`;
+  };
+
+  const pageWindow = (() => {
+    const pages: number[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+      return pages;
+    }
+    const start = Math.max(1, currentPage - 2);
+    const end = Math.min(totalPages, currentPage + 2);
+    if (start > 1) pages.push(1);
+    if (start > 2) pages.push(-1);
+    for (let i = start; i <= end; i++) pages.push(i);
+    if (end < totalPages - 1) pages.push(-2);
+    if (end < totalPages) pages.push(totalPages);
+    return pages;
+  })();
 
   return (
     <div className="animate-fade-in">
@@ -191,7 +236,7 @@ export function SearchPageClient() {
                   !category ? 'bg-primary text-white shadow-sm' : 'bg-white text-muted border border-border hover:border-gray-300'
                 }`}
               >
-                הכל {!category && result && result.total > 0 && `(${result.total})`}
+                הכל {queryScopedTotal > 0 && `(${queryScopedTotal})`}
               </Link>
               {activeCategories.map((cat) => (
                 <Link
@@ -201,7 +246,7 @@ export function SearchPageClient() {
                     category === cat.slug ? 'bg-primary text-white shadow-sm' : 'bg-white text-muted border border-border hover:border-gray-300'
                   }`}
                 >
-                  {cat.localizedName} {cat.modelCount > 0 && `(${cat.modelCount})`}
+                  {cat.localizedName} ({cat.modelCount})
                 </Link>
               ))}
             </div>
@@ -218,7 +263,7 @@ export function SearchPageClient() {
                   >
                     <span className="w-5 h-5 flex items-center justify-center text-xs">✦</span>
                     <span className="flex-1">הכל</span>
-                    {!category && result && result.total > 0 && <span className="text-[11px] text-muted/60">{result.total}</span>}
+                    {queryScopedTotal > 0 && <span className="text-[11px] text-muted/60">{queryScopedTotal}</span>}
                   </Link>
                 </li>
                 {activeCategories.map((cat) => (
@@ -286,7 +331,7 @@ export function SearchPageClient() {
                     <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
                     </svg>
-                    <span>מקורות חיצוניים אינם זמינים כרגע — מוצגות תוצאות מהקטלוג המקומי בלבד.</span>
+                    <span>מקורות חיצוניים אינם זמינים כרגע — מוצגות תוצאות אמת מה-cache בלבד.</span>
                   </div>
                 )}
 
@@ -304,17 +349,66 @@ export function SearchPageClient() {
                     </Link>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
-                    {(result?.items ?? []).map((item, i) => (
-                      <SearchResultCard
-                        key={item.id}
-                        item={item}
-                        index={i}
-                        hue={HUES[i % HUES.length]}
-                        query={query}
-                      />
-                    ))}
-                  </div>
+                  <>
+                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
+                      {(result?.items ?? []).map((item, i) => (
+                        <SearchResultCard
+                          key={item.id}
+                          item={item}
+                          index={i}
+                          hue={HUES[i % HUES.length]}
+                          query={query}
+                        />
+                      ))}
+                    </div>
+
+                    {totalPages > 1 && (
+                      <nav className="mt-8 flex items-center justify-center gap-1.5" aria-label="Pagination">
+                        <Link
+                          href={buildSearchHref(Math.max(1, currentPage - 1))}
+                          className={`px-3 py-2 rounded-lg text-sm border transition-colors ${
+                            currentPage <= 1
+                              ? 'pointer-events-none opacity-40 bg-muted-bg text-muted border-border'
+                              : 'bg-white text-foreground border-border hover:bg-muted-bg'
+                          }`}
+                          aria-disabled={currentPage <= 1}
+                        >
+                          הקודם
+                        </Link>
+
+                        {pageWindow.map((p, idx) => (
+                          p < 0 ? (
+                            <span key={`ellipsis-${idx}`} className="px-2 text-muted">…</span>
+                          ) : (
+                            <Link
+                              key={p}
+                              href={buildSearchHref(p)}
+                              className={`min-w-9 h-9 px-2 inline-flex items-center justify-center rounded-lg text-sm border transition-colors ${
+                                p === currentPage
+                                  ? 'bg-primary text-white border-primary'
+                                  : 'bg-white text-foreground border-border hover:bg-muted-bg'
+                              }`}
+                              aria-current={p === currentPage ? 'page' : undefined}
+                            >
+                              {p}
+                            </Link>
+                          )
+                        ))}
+
+                        <Link
+                          href={buildSearchHref(Math.min(totalPages, currentPage + 1))}
+                          className={`px-3 py-2 rounded-lg text-sm border transition-colors ${
+                            currentPage >= totalPages
+                              ? 'pointer-events-none opacity-40 bg-muted-bg text-muted border-border'
+                              : 'bg-white text-foreground border-border hover:bg-muted-bg'
+                          }`}
+                          aria-disabled={currentPage >= totalPages}
+                        >
+                          הבא
+                        </Link>
+                      </nav>
+                    )}
+                  </>
                 )}
 
                 {/* Dev debug panel */}
@@ -324,12 +418,13 @@ export function SearchPageClient() {
                     <div className="space-y-1 text-[11px]">
                       <div><span className="text-gray-400 w-28 inline-block">Search Mode:</span> {debug.searchMode}</div>
                       <div><span className="text-gray-400 w-28 inline-block">Raw Query:</span> {debug.rawQuery || '(empty)'}</div>
-                      <div><span className="text-gray-400 w-28 inline-block">Category:</span> {debug.categorySlug ?? '(none)'}</div>
+                      <div><span className="text-gray-400 w-28 inline-block">Category:</span> {debug.selectedCategory ?? debug.categorySlug ?? '(none)'}</div>
                       <div><span className="text-gray-400 w-28 inline-block">Cache Key:</span> {debug.cacheKey}</div>
-                      <div><span className="text-gray-400 w-28 inline-block">Results:</span> {debug.resultCount} / {debug.totalCount}</div>
+                      <div><span className="text-gray-400 w-28 inline-block">Query Scoped:</span> {debug.totalQueryScopedResults ?? queryScopedTotal}</div>
+                      <div><span className="text-gray-400 w-28 inline-block">Displayed:</span> {debug.displayedResultsCount ?? debug.resultCount}</div>
                       <div><span className="text-gray-400 w-28 inline-block">Data Source:</span> {dataSource}</div>
                       <div><span className="text-gray-400 w-28 inline-block">Stale Ignored:</span> {staleIgnored ? 'yes' : 'no'}</div>
-                      <div><span className="text-gray-400 w-28 inline-block">Category Counts:</span> {JSON.stringify(result?.meta?.categoryCounts ?? {})}</div>
+                      <div><span className="text-gray-400 w-28 inline-block">Category Counts:</span> {JSON.stringify(debug.queryScopedCategoryCounts ?? categoryCounts)}</div>
                     </div>
                   </div>
                 )}

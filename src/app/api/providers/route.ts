@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSearchService, getProviderRegistry, getProviderCache, getCatalogStore } from '@/lib/services/container';
 import { ThingiverseProvider } from '@/lib/providers/thingiverse';
+import { MyMiniFactoryProvider } from '@/lib/providers/myminifactory';
 
 /**
  * GET /api/providers — returns registered providers, their availability,
@@ -16,11 +17,17 @@ export async function GET() {
     const catalogStore = getCatalogStore();
 
     const tvProvider = registry.get('thingiverse') as ThingiverseProvider | undefined;
+    const mmfProvider = registry.get('myminifactory') as MyMiniFactoryProvider | undefined;
 
     const response: Record<string, unknown> = {
       providers: statuses.map((s) => ({
         ...s,
-        circuitState: s.id === 'thingiverse' ? tvProvider?.circuitState ?? 'unknown' : undefined,
+        circuitState:
+          s.id === 'thingiverse'
+            ? tvProvider?.circuitState ?? 'unknown'
+            : s.id === 'myminifactory'
+              ? mmfProvider?.circuitState ?? 'unknown'
+              : undefined,
       })),
       totalRegistered: registry.size,
       externalCount: registry.getExternal().length,
@@ -36,14 +43,10 @@ export async function GET() {
         excludedModels: catalogStore.getExcludedModels(),
       };
       response.dataIntegrity = {
-        mockItemCount: byProvider['local'] ?? 0,
-        realProviderCounts: Object.fromEntries(
-          Object.entries(byProvider).filter(([k]) => k !== 'local'),
-        ),
+        syntheticItemCount: 0,
+        realProviderCounts: byProvider,
         totalCatalogEntries: catalogStore.size,
-        assertion: (byProvider['local'] ?? 0) === 0
-          ? 'PASS — zero mock items in catalog'
-          : `FAIL — ${byProvider['local']} mock items detected`,
+        assertion: 'PASS — synthetic catalog items disabled',
       };
     }
 

@@ -1,5 +1,5 @@
 import type { NormalizedModel, ModelSummary, CatalogEntry, ProviderResult } from '@/lib/types';
-import { isCommerciallyUsable } from '@/lib/types/model';
+import { isStorefrontEligible, storefrontEligibilityReason } from '@/lib/types/model';
 import type { ModelSearchOptions, PaginatedResult, PaginationParams, SearchMeta } from '@/lib/repositories';
 import type { AnalyticsRepository } from '@/lib/repositories';
 import type { ProviderRegistry } from '@/lib/providers/registry';
@@ -55,7 +55,13 @@ export class SearchService {
       await this.analytics.recordSearchTerm(analyzed.normalized).catch(() => {});
     }
 
-    const localResult = this.catalogStore.search(query, resolved);
+    const localQueryScopedEntries = this.catalogStore.getQueryScopedEntries(query, resolved.sortBy);
+    const localQueryScopedSummaries = localQueryScopedEntries.map(toSummary);
+    const localDisplayedSummaries = resolved.category
+      ? localQueryScopedSummaries.filter((item) => item.category === resolved.category)
+      : localQueryScopedSummaries;
+    const localResult = paginateSummaries(localDisplayedSummaries, resolved.page, resolved.pageSize);
+    const queryScopedCategoryCounts = this.computeCategoryCounts(localQueryScopedSummaries);
 
     const localOnlyMeta: SearchMeta = {
       externalProvidersQueried: 0,
@@ -65,14 +71,14 @@ export class SearchService {
     };
 
     if (!this.registry) {
-      localOnlyMeta.categoryCounts = this.computeCategoryCounts(localResult.items);
+      localOnlyMeta.categoryCounts = queryScopedCategoryCounts;
       this.recordSearchAnalytics(analyzed, localResult.total, startMs, resolved);
       return { ...localResult, meta: localOnlyMeta };
     }
 
     const externalProviders = this.registry.getExternal();
     if (externalProviders.length === 0) {
-      localOnlyMeta.categoryCounts = this.computeCategoryCounts(localResult.items);
+      localOnlyMeta.categoryCounts = queryScopedCategoryCounts;
       this.recordSearchAnalytics(analyzed, localResult.total, startMs, resolved);
       return { ...localResult, meta: localOnlyMeta };
     }
@@ -89,7 +95,6 @@ export class SearchService {
         : await this.registry.searchExternal(browseOrSearchQuery, {
             limit: Math.min(resolved.pageSize * 4, 48),
             offset: (resolved.page - 1) * resolved.pageSize,
-            category: resolved.category,
           });
 
       const meta: SearchMeta = {
@@ -101,14 +106,14 @@ export class SearchService {
 
       if (externalResults.size === 0) {
         meta.localOnly = true;
-        meta.categoryCounts = this.computeCategoryCounts(localResult.items);
+        meta.categoryCounts = queryScopedCategoryCounts;
         console.log(`${TAG} "${browseOrSearchQuery}" → ${localResult.total} catalog results, 0 external providers responded`);
         this.recordSearchAnalytics(analyzed, localResult.total, startMs, resolved);
         return { ...localResult, meta };
       }
 
       // ─── Stage 1: Discover — collect raw candidates ──────────
-      const localIds = new Set(localResult.items.map((m) => m.id));
+      const localIds = new Set(localQueryScopedSummaries.map((m) => m.id));
       const allCandidates: Array<{ providerId: string; result: ProviderResult }> = [];
 
       for (const [providerId, providerResults] of externalResults) {
@@ -127,8 +132,7 @@ export class SearchService {
       for (const { providerId, result } of allCandidates) {
         const cached = this.catalogStore.getByExternalId(result.externalId, providerId);
         if (cached && cached.license.commercialUse !== 'unknown') {
-          // Already enriched and cached — use the cached license verdict
-          if (isCommerciallyUsable(cached)) alreadyAllowed++;
+          if (isStorefrontEligible(cached, providerId)) alreadyAllowed++;
           else alreadyRestricted++;
           continue;
         }
@@ -199,17 +203,13 @@ export class SearchService {
         const entry = ingested[0];
         if (!entry) continue;
 
-        if (!isCommerciallyUsable(entry)) {
+        if (!isStorefrontEligible(entry, providerId)) {
           licenseExcluded++;
           if (process.env.NODE_ENV === 'development') {
             console.log(
-              `${TAG} Stage 3 (filter): Excluded "${entry.name}" (${entry.id}) — ` +
-              `${entry.license.commercialUse}: ${entry.license.commercialUseReason ?? entry.license.spdxId}`,
+              `${TAG} Stage 3 (filter): ${storefrontEligibilityReason(entry, providerId)} — "${entry.name}" (${entry.id})`,
             );
           }
-          continue;
-        }
-        if (resolved.category && !entry.categories.includes(resolved.category)) {
           continue;
         }
         if (!localIds.has(entry.id)) {
@@ -233,8 +233,6 @@ export class SearchService {
       const externalItems = scoredExternal.map((s) => toSummary(s.item));
       meta.externalResultCount = externalItems.length;
 
-      const totalResults = localResult.total + externalItems.length;
-
       if (process.env.NODE_ENV === 'development') {
         const providerBreakdown: string[] = [];
         for (const [pid, pResults] of externalResults) {
@@ -243,14 +241,13 @@ export class SearchService {
         console.log(
           `${TAG} "${query}" [${analyzed.language}] → ` +
           `${localResult.total} catalog + ${externalItems.length} external (${providerBreakdown.join(', ')}) | ` +
-          `mock injected: 0`,
+          `synthetic injected: 0`,
         );
       }
 
-      this.recordSearchAnalytics(analyzed, totalResults, startMs, resolved);
-
       if (externalItems.length === 0) {
-        meta.categoryCounts = this.computeCategoryCounts(localResult.items);
+        meta.categoryCounts = queryScopedCategoryCounts;
+        this.recordSearchAnalytics(analyzed, localResult.total, startMs, resolved);
         return { ...localResult, meta };
       }
 
@@ -258,7 +255,7 @@ export class SearchService {
       // CatalogStore, external items are relevance-ranked above. Combine
       // all into a single array and re-rank to get a unified relevance order.
       const allModels = [
-        ...localResult.items.map((s) => ({ summary: s, isLocal: true })),
+        ...localQueryScopedSummaries.map((s) => ({ summary: s, isLocal: true })),
         ...externalItems.map((s) => ({ summary: s, isLocal: false })),
       ];
 
@@ -269,7 +266,7 @@ export class SearchService {
       }
       // Local items that passed through CatalogStore.search have implicit relevance
       // (zero-relevance items are already filtered). Give them a base score from popularity.
-      for (const item of localResult.items) {
+      for (const item of localQueryScopedSummaries) {
         if (!scoreMap.has(item.id)) {
           scoreMap.set(item.id, (item.popularityScore / 100) * 0.5 + 0.5);
         }
@@ -281,16 +278,16 @@ export class SearchService {
         return scoreB - scoreA;
       });
 
-      meta.categoryCounts = this.computeCategoryCounts(allModels.map((m) => m.summary));
-
-      const offset = (resolved.page - 1) * resolved.pageSize;
-      const pagedItems = allModels.slice(offset, offset + resolved.pageSize).map((m) => m.summary);
+      const queryScopedModels = allModels.map((m) => m.summary);
+      meta.categoryCounts = this.computeCategoryCounts(queryScopedModels);
+      const displayedModels = resolved.category
+        ? queryScopedModels.filter((m) => m.category === resolved.category)
+        : queryScopedModels;
+      const paged = paginateSummaries(displayedModels, resolved.page, resolved.pageSize);
+      this.recordSearchAnalytics(analyzed, paged.total, startMs, resolved);
 
       return {
-        items: pagedItems,
-        total: totalResults,
-        page: resolved.page,
-        pageSize: resolved.pageSize,
+        ...paged,
         meta,
       };
     } catch (err) {
@@ -299,7 +296,7 @@ export class SearchService {
       const fallbackMeta = {
         ...localOnlyMeta,
         externalProvidersQueried: externalProviders.length,
-        categoryCounts: this.computeCategoryCounts(localResult.items),
+        categoryCounts: queryScopedCategoryCounts,
       };
       return { ...localResult, meta: fallbackMeta };
     }
@@ -375,9 +372,10 @@ export class SearchService {
       }
 
       allExternal = allExternal.filter((m) => {
-        if (!isCommerciallyUsable(m)) {
+        const pid = m.source.name;
+        if (!isStorefrontEligible(m, pid)) {
           if (process.env.NODE_ENV === 'development') {
-            console.log(`${TAG} Popular: excluded "${m.name}" — ${m.license.commercialUse}`);
+            console.log(`${TAG} Popular: ${storefrontEligibilityReason(m, pid)} — "${m.name}"`);
           }
           return false;
         }
@@ -385,7 +383,7 @@ export class SearchService {
       });
       if (process.env.NODE_ENV === 'development') {
         console.log(
-          `${TAG} getPopular: ${allExternal.length} real models from ${externalProviders.map((p) => p.id).join(', ')} | mock injected: 0`,
+          `${TAG} getPopular: ${allExternal.length} real models from ${externalProviders.map((p) => p.id).join(', ')} | synthetic injected: 0`,
         );
       }
 
@@ -497,5 +495,15 @@ function toSummary(m: NormalizedModel): ModelSummary {
     commercialUse: m.license.commercialUse,
     lowResThumbnailUrl: img?.thumbnailUrl,
     mediumImageUrl: img?.mediumUrl,
+  };
+}
+
+function paginateSummaries(items: ModelSummary[], page: number, pageSize: number): PaginatedResult<ModelSummary> {
+  const offset = (page - 1) * pageSize;
+  return {
+    items: items.slice(offset, offset + pageSize),
+    total: items.length,
+    page,
+    pageSize,
   };
 }

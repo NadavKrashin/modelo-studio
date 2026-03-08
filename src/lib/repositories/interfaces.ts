@@ -20,7 +20,7 @@ export interface SearchMeta {
   externalProvidersQueried: number;
   externalProvidersAvailable: number;
   externalResultCount: number;
-  /** Dynamic category counts from the current result set (query+category filter). */
+  /** Query-scoped category counts (computed before selected category filter). */
   categoryCounts?: Record<string, number>;
   localOnly: boolean;
 }

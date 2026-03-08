@@ -16,7 +16,7 @@ export type ImportStatus = 'discovered' | 'metadata_cached' | 'thumbnails_cached
 // ─── Catalog metadata ───────────────────────────────────────
 
 export interface CatalogMetadata {
-  /** Which provider supplied this model. 'local' for seed/mock data. */
+  /** Which provider supplied this model (e.g. thingiverse, myminifactory). */
   providerId: string;
   /** ISO timestamp — when this model was first added to the catalog. */
   importedAt: string;
@@ -72,15 +72,9 @@ export function isStale(entry: CatalogEntry): boolean {
   return Date.now() - refreshedAt > entry.catalog.staleAfterMs;
 }
 
-export function isSeedData(entry: CatalogEntry): boolean {
-  return entry.catalog.providerId === 'local';
-}
-
 // ─── Default TTLs ───────────────────────────────────────────
 
 export const CATALOG_DEFAULTS = {
   /** External models go stale after 30 minutes. */
   externalStaleTtlMs: 30 * 60 * 1000,
-  /** Local/seed models never go stale (effectively infinite). */
-  localStaleTtlMs: Number.MAX_SAFE_INTEGER,
 } as const;

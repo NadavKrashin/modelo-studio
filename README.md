@@ -10,7 +10,7 @@ npm install
 
 # 2. Configure environment
 cp .env.example .env.local
-# Edit .env.local — add your Thingiverse API token (see below)
+# Edit .env.local — add provider + Firebase values (see below)
 
 # 3. Start dev server
 npm run dev
@@ -56,7 +56,40 @@ MyMiniFactory is the second external provider, offering curated 3D-printable mod
    [Container] MyMiniFactory provider enabled (timeout=12000ms, retries=2, circuit-threshold=5)
    ```
 
-**Without tokens**, the app still works — it shows models from the local mock catalog only. Each provider is independently optional.
+If provider credentials are missing/invalid, storefront results will be empty rather than mocked.
+
+## Firebase Setup (foundation)
+
+Firebase is now the persistence foundation for app state:
+- Firestore order records
+- Firestore search-term + order-event analytics
+- Firestore normalized model metadata cache
+- client/server Firebase bootstrap for upcoming auth + notifications phases
+
+### 1) Create project + Firestore
+
+1. Create a Firebase project in [Firebase Console](https://console.firebase.google.com/).
+2. Enable Firestore (Native mode).
+3. Create a Web App and copy the `NEXT_PUBLIC_FIREBASE_*` config values.
+4. Create a service account key from Project settings -> Service accounts.
+
+### 2) Configure `.env.local`
+
+Set all `NEXT_PUBLIC_FIREBASE_*` variables and one server auth option:
+- Option A: `FIREBASE_SERVICE_ACCOUNT_JSON`
+- Option B: `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`
+
+### 3) Collections used in this phase
+
+- `orders`
+- `search_terms`
+- `order_events`
+- `model_cache`
+
+### TODO markers for next phases
+
+- `TODO(firebase-auth)`: add Firebase Authentication integration and user identity linkage.
+- `TODO(firebase-notifications)`: add Firebase Cloud Messaging integration for order status notifications.
 
 ### How the provider system works
 
@@ -65,13 +98,12 @@ User searches "dragon"
         │
         ▼
   ┌───────────────┐
-  │ SearchService  │─── 1. Query local catalog (fast, always available)
+  │ SearchService  │─── 1. Query normalized catalog cache
   └───────┬───────┘    2. Query external providers in parallel
-          │            3. Merge, deduplicate, rank, cache
+          │            3. Merge, deduplicate, rank, persist
           ▼
   ┌────────────────────┐
   │  ProviderRegistry   │
-  │  ├─ local           │──► MockModelRepository (built-in models)
   │  ├─ thingiverse     │──► ThingiverseProvider → ThingiverseClient → API
   │  └─ myminifactory   │──► MyMiniFactoryProvider → MMFClient → API
   └────────────────────┘
@@ -87,7 +119,7 @@ User searches "dragon"
 | **Rate limiting** | Sliding-window, 300 req / 5 min |
 | **Negative caching** | Failed queries are cached for 30s to prevent retry storms |
 | **Response caching** | Search: 5 min, model details: 30 min, images: 1 hour |
-| **Graceful fallback** | If the API is down, local results are shown with a notice |
+| **Graceful empty state** | If providers/cache have no real data, storefront returns empty results |
 
 ### Diagnostics
 
@@ -107,7 +139,8 @@ The architecture supports additional providers (Printables, Thangs, etc.). Stub 
 - **Next.js 16** (App Router, Server + Client Components)
 - **React 19** + **TypeScript**
 - **Tailwind CSS 4**
-- **Zustand** (client-side cart state)
+- **Zustand** (client-side cart + search UI state)
+- **Firebase + Firestore** (persistent app state foundation)
 - **Zod** (API validation)
 
 ## Project Structure
@@ -137,7 +170,6 @@ src/
 │   │   ├── cache.ts           # In-memory TTL cache with negative caching
 │   │   ├── registry.ts        # Federated search orchestration
 │   │   ├── base-provider.ts   # Abstract provider interface
-│   │   ├── local-provider.ts  # Local mock data provider
 │   │   ├── thingiverse/       # Thingiverse integration
 │   │   │   ├── types.ts       # Raw API response types
 │   │   │   ├── client.ts      # HTTP client + circuit breaker
@@ -148,11 +180,12 @@ src/
 │   │       ├── client.ts      # HTTP client + circuit breaker
 │   │       ├── normalizer.ts  # Raw → NormalizedModel mapping
 │   │       └── provider.ts    # Provider implementation
+│   ├── firebase/              # Firebase client/admin bootstrap
+│   ├── catalog/               # In-memory + Firestore cache layer
 │   ├── services/              # SearchService, OrderService, PricingService
-│   ├── repositories/          # Data access layer (mock implementations)
+│   ├── repositories/          # Firestore + static repositories
 │   ├── types/                 # TypeScript interfaces
 │   ├── licenses.ts            # License registry + Thingiverse mapping
-│   ├── db/                    # Mock database / seed data
 │   └── constants/             # Categories, filaments
 └── features/                  # Feature modules (future)
 ```
@@ -188,8 +221,20 @@ The `NormalizedModel` type is the single source of truth for model data in the U
 | `MYMINIFACTORY_API_KEY` | No* | — | MyMiniFactory API key |
 | `MYMINIFACTORY_ENABLED` | No | `true` (if key set) | Set to `false` to disable |
 | `MYMINIFACTORY_API_URL` | No | `https://www.myminifactory.com/api/v2` | API base URL override |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | Yes | — | Firebase web app API key |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Yes | — | Firebase web app auth domain |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Yes | — | Firebase project ID |
+| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | Yes | — | Firebase storage bucket |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Yes | — | Firebase messaging sender ID |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | Yes | — | Firebase web app ID |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | Yes** | — | Firebase admin service account JSON |
+| `FIREBASE_PROJECT_ID` | Yes** | — | Firebase admin project id |
+| `FIREBASE_CLIENT_EMAIL` | Yes** | — | Firebase admin client email |
+| `FIREBASE_PRIVATE_KEY` | Yes** | — | Firebase admin private key |
+| `FIREBASE_STORAGE_BUCKET` | No | — | Firebase bucket for future file flows |
 
-\* Without tokens, the app runs with local data only. Each provider is independently optional.
+\* Provider data requires credentials; no fake local catalog fallback is used.  
+\** Use either `FIREBASE_SERVICE_ACCOUNT_JSON` or the explicit admin fields.
 
 ## Troubleshooting
 
@@ -199,7 +244,7 @@ Your API token/key is missing or empty. Set the relevant env var in `.env.local`
 - **Thingiverse**: `THINGIVERSE_API_TOKEN` — get it from `https://www.thingiverse.com/apps/`
 - **MyMiniFactory**: `MYMINIFACTORY_API_KEY` — get it from `https://www.myminifactory.com/pages/for-developers`
 
-### Search returns only local results
+### Search returns no results
 
 Check `GET /api/providers` — if a provider shows `available: false` or `circuitState: "open"`, the API may be down or your credentials may be invalid.
 

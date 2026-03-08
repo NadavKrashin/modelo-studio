@@ -40,7 +40,7 @@ export interface SearchBackend {
 /**
  * SearchAnalyticsBackend — abstraction for search analytics persistence.
  *
- * The MockSearchAnalytics implements this in-memory.
+ * The in-memory analytics backend implements this during local development.
  * For production, implement with a time-series DB or analytics pipeline.
  */
 export interface SearchAnalyticsBackend {

@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { CATEGORIES } from '@/lib/constants';
 import { FILAMENT_OPTIONS } from '@/lib/constants/filaments';
 import { CategoryIcon } from '@/components/ui/CategoryIcon';
 import { getSearchService, getCategoryRepo } from '@/lib/services/container';
@@ -9,12 +8,7 @@ export default async function HomePage() {
   const categoryRepo = getCategoryRepo();
 
   const popularModels = await searchService.getPopular(8);
-  const categoryCounts = searchService.getCategoryCounts();
-  const rawCategories = await categoryRepo.findActive();
-  const activeCategories = rawCategories.map((c) => ({
-    ...c,
-    modelCount: categoryCounts[c.id] ?? 0,
-  }));
+  const activeCategories = await categoryRepo.findActive();
   const popularFilaments = FILAMENT_OPTIONS.filter((f) => f.inStock).slice(0, 12);
 
   return (
@@ -28,6 +22,58 @@ export default async function HomePage() {
           <svg className="absolute top-1/2 left-1/4 -translate-y-1/2 opacity-[0.06]" width="600" height="600" viewBox="0 0 64 64" fill="none">
             <path d="M32 4L60 20V44L32 60L4 44V20L32 4Z" stroke="white" strokeWidth="0.5" />
             <path d="M32 4L60 20L32 36L4 20L32 4Z" fill="white" fillOpacity="0.1" />
+          </svg>
+        </div>
+
+        {/* 3D object illustration (desktop) */}
+        <div
+          className="hidden lg:block absolute left-0 xl:left-6 top-1/2 -translate-y-1/2 pointer-events-none select-none"
+          aria-hidden
+        >
+          <svg width="360" height="360" viewBox="0 0 360 360" fill="none" className="opacity-90">
+            <defs>
+              <linearGradient id="heroObjectStroke" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.85" />
+                <stop offset="100%" stopColor="#9EE5F5" stopOpacity="0.75" />
+              </linearGradient>
+              <linearGradient id="heroObjectFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#DDF8FF" stopOpacity="0.18" />
+                <stop offset="100%" stopColor="#BFD8FF" stopOpacity="0.05" />
+              </linearGradient>
+              <filter id="heroObjectGlow" x="-30%" y="-30%" width="160%" height="160%">
+                <feGaussianBlur stdDeviation="6" />
+              </filter>
+            </defs>
+
+            {/* Soft glow */}
+            <ellipse cx="170" cy="292" rx="92" ry="20" fill="#9EE5F5" fillOpacity="0.2" filter="url(#heroObjectGlow)" />
+
+            {/* Print bed */}
+            <path d="M70 270L170 220L270 270L170 318L70 270Z" stroke="url(#heroObjectStroke)" strokeOpacity="0.55" strokeWidth="2" />
+            <path d="M95 270L170 234L245 270L170 306L95 270Z" stroke="url(#heroObjectStroke)" strokeOpacity="0.3" strokeWidth="1.5" />
+
+            {/* Isometric vase-like 3D object */}
+            <path
+              d="M170 92C188 92 205 102 214 121C220 135 220 150 211 165C204 178 202 192 208 205C216 223 208 243 190 252C183 256 177 258 170 258C163 258 157 256 150 252C132 243 124 223 132 205C138 192 136 178 129 165C120 150 120 135 126 121C135 102 152 92 170 92Z"
+              fill="url(#heroObjectFill)"
+              stroke="url(#heroObjectStroke)"
+              strokeWidth="2.5"
+            />
+
+            {/* Layer lines to hint at 3D printing */}
+            <path d="M141 127C159 119 181 119 199 127" stroke="url(#heroObjectStroke)" strokeOpacity="0.6" strokeWidth="1.2" />
+            <path d="M136 145C157 136 183 136 204 145" stroke="url(#heroObjectStroke)" strokeOpacity="0.55" strokeWidth="1.2" />
+            <path d="M133 163C156 154 184 154 207 163" stroke="url(#heroObjectStroke)" strokeOpacity="0.5" strokeWidth="1.2" />
+            <path d="M132 181C156 172 184 172 208 181" stroke="url(#heroObjectStroke)" strokeOpacity="0.45" strokeWidth="1.2" />
+            <path d="M133 199C156 191 184 191 207 199" stroke="url(#heroObjectStroke)" strokeOpacity="0.4" strokeWidth="1.2" />
+            <path d="M137 217C157 209 183 209 203 217" stroke="url(#heroObjectStroke)" strokeOpacity="0.35" strokeWidth="1.2" />
+            <path d="M145 235C160 229 180 229 195 235" stroke="url(#heroObjectStroke)" strokeOpacity="0.35" strokeWidth="1.2" />
+
+            {/* Nozzle + guide lines */}
+            <circle cx="170" cy="66" r="8" fill="#CFF6FF" fillOpacity="0.9" />
+            <path d="M170 74V100" stroke="url(#heroObjectStroke)" strokeOpacity="0.8" strokeWidth="2" />
+            <path d="M124 86H216" stroke="url(#heroObjectStroke)" strokeOpacity="0.35" strokeWidth="1.5" />
+            <path d="M124 78H216" stroke="url(#heroObjectStroke)" strokeOpacity="0.2" strokeWidth="1.5" />
           </svg>
         </div>
 
@@ -51,26 +97,32 @@ export default async function HomePage() {
 
             {/* Search Bar */}
             <form action="/search" method="GET">
-              <div className="flex items-center bg-white rounded-2xl shadow-2xl shadow-black/20 overflow-hidden max-w-xl ring-1 ring-white/20">
-                <div className="flex items-center gap-3 flex-1 px-5">
-                  <svg className="w-5 h-5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                  </svg>
-                  <input
-                    type="search"
-                    name="q"
-                    placeholder='חפשו מודל... למשל: "דרקון", "מעמד טלפון", "עציץ"'
-                    className="flex-1 py-4 text-gray-900 placeholder-gray-400 text-[15px] outline-none bg-transparent"
-                    dir="auto"
-                    autoComplete="off"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="bg-primary hover:bg-primary-hover text-white px-7 py-4 font-semibold text-sm transition-colors shrink-0"
+              <div className="max-w-2xl">
+                <div
+                  dir="rtl"
+                  className="flex items-center gap-1.5 rounded-2xl bg-white p-1.5 shadow-2xl shadow-black/20 ring-1 ring-white/25 transition-all focus-within:ring-2 focus-within:ring-cyan-200/70"
                 >
-                  חיפוש
-                </button>
+                  <button
+                    type="submit"
+                    className="shrink-0 h-10 px-6 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-sm transition-all shadow-md shadow-primary/25"
+                  >
+                    חיפוש
+                  </button>
+
+                  <div className="flex items-center gap-3 flex-1 px-4">
+                    <input
+                      type="search"
+                      name="q"
+                      placeholder='חפשו מודל... למשל: "דרקון", "מעמד טלפון", "עציץ"'
+                      className="flex-1 py-3.5 text-right text-gray-900 placeholder-gray-400 text-[15px] outline-none bg-transparent"
+                      dir="rtl"
+                      autoComplete="off"
+                    />
+                    <svg className="w-5 h-5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                    </svg>
+                  </div>
+                </div>
               </div>
             </form>
 
@@ -141,7 +193,6 @@ export default async function HomePage() {
               </div>
               <div>
                 <h3 className="font-semibold text-foreground text-sm leading-tight">{cat.localizedName}</h3>
-                <p className="text-[11px] text-muted mt-1">{cat.modelCount} מודלים</p>
               </div>
             </Link>
           ))}

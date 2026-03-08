@@ -5,12 +5,63 @@ export type ModelAvailability = 'available' | 'unavailable' | 'discontinued' | '
 export type LicenseCommercialUse = 'allowed' | 'restricted' | 'unknown';
 
 /**
+ * Providers whose models remain storefront-visible even when their license
+ * metadata is missing or unrecognized.  Only *explicitly restricted* (NC)
+ * licenses are hidden for these providers.
+ *
+ * Add provider IDs here to opt them in.  Providers NOT in this set still
+ * use the strict rule: unknown → hidden.
+ */
+const UNKNOWN_LICENSE_ALLOWED_PROVIDERS = new Set<string>([
+  'thingiverse',
+]);
+
+/**
  * Returns true only if the model's license explicitly allows commercial use.
- * Models with 'restricted' or 'unknown' licenses are excluded from the
- * customer-facing storefront as a strict business rule.
+ * Does NOT account for provider-specific business rules — prefer
+ * `isStorefrontEligible()` for all storefront visibility decisions.
  */
 export function isCommerciallyUsable(model: { license: { commercialUse: LicenseCommercialUse } }): boolean {
   return model.license.commercialUse === 'allowed';
+}
+
+/**
+ * Provider-aware storefront visibility check.
+ *
+ * Rules:
+ *  - `restricted` → always hidden (regardless of provider)
+ *  - `allowed`    → always visible
+ *  - `unknown`    → visible IF the provider is in UNKNOWN_LICENSE_ALLOWED_PROVIDERS,
+ *                    hidden otherwise
+ *
+ * @param providerId  The catalog provider ID (e.g. 'thingiverse', 'myminifactory')
+ */
+export function isStorefrontEligible(
+  model: { license: { commercialUse: LicenseCommercialUse } },
+  providerId: string,
+): boolean {
+  if (model.license.commercialUse === 'restricted') return false;
+  if (model.license.commercialUse === 'allowed') return true;
+  return UNKNOWN_LICENSE_ALLOWED_PROVIDERS.has(providerId);
+}
+
+/**
+ * Returns a human-readable reason for the visibility decision (for dev logs).
+ */
+export function storefrontEligibilityReason(
+  model: { license: { commercialUse: LicenseCommercialUse; commercialUseReason?: string } },
+  providerId: string,
+): string {
+  if (model.license.commercialUse === 'allowed') {
+    return 'visible — license explicitly allows commercial use';
+  }
+  if (model.license.commercialUse === 'restricted') {
+    return `hidden — explicitly restricted: ${model.license.commercialUseReason ?? 'non-commercial license'}`;
+  }
+  if (UNKNOWN_LICENSE_ALLOWED_PROVIDERS.has(providerId)) {
+    return `visible — ${providerId} unknown license permitted by business rule`;
+  }
+  return `hidden — unknown license, provider "${providerId}" uses strict rule`;
 }
 
 export interface ModelLicense {

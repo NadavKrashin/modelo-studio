@@ -17,8 +17,7 @@ import type { ModelSourceProvider, SourceSearchOptions, ProviderResult } from '@
  *   └──────┬────────┘       └──────────────┘
  *          │ queries
  *   ┌──────▼────────┐
- *   │   Registry     │──► LocalProvider (mock/DB)
- *   │                │──► ThingiverseProvider
+ *   │   Registry     │──► ThingiverseProvider
  *   │                │──► MyMiniFactoryProvider
  *   │                │──► PrintablesProvider (future)
  *   └───────────────┘
@@ -56,7 +55,7 @@ export class ProviderRegistry {
   }
 
   getExternal(): ModelSourceProvider[] {
-    return this.getAll().filter((p) => p.id !== 'local');
+    return this.getAll();
   }
 
   /**

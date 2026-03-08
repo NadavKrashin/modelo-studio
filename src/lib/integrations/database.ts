@@ -4,7 +4,7 @@
  * When ready to move to a real database:
  * 1. Install: `npm install pg @prisma/client` (or drizzle-orm, knex, etc.)
  * 2. Implement the repository interfaces from `@/lib/repositories/interfaces`
- * 3. Swap the mock implementations in `@/lib/services/container.ts`
+ * 3. Swap/extend the repository implementations in `@/lib/services/container.ts`
  *
  * Recommended schema migrations: use Prisma Migrate or node-pg-migrate.
  *

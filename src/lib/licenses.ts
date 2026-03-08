@@ -156,18 +156,20 @@ export function getAllLicenses(): ModelLicense[] {
  *   "Creative Commons - Attribution - Share Alike"
  * which we normalize to "CC-BY-SA-4.0".
  *
- * Strict commercial-use interpretation:
- * - If the license string is missing/empty → 'unknown' (excluded from storefront)
- * - If the license string contains NC → 'restricted' (excluded from storefront)
- * - If the license string is unrecognized → 'unknown' (excluded from storefront)
- * - Only well-known permissive licenses → 'allowed'
+ * The `commercialUse` field stays truthful:
+ * - Known permissive license → 'allowed'
+ * - Known NC license         → 'restricted'
+ * - Missing / unrecognized   → 'unknown'
+ *
+ * Storefront visibility for Thingiverse 'unknown' models is handled by
+ * isStorefrontEligible() which has a provider-specific business rule.
  */
 export function mapThingiverseLicense(raw: string | undefined | null): ModelLicense {
   if (!raw) {
     return {
       ...LICENSES['UNKNOWN'],
       rawProviderLicense: raw ?? undefined,
-      commercialUseReason: 'Thingiverse model has no license metadata',
+      commercialUseReason: 'Thingiverse model has no license metadata — shown by provider business rule',
     };
   }
 
@@ -197,7 +199,7 @@ export function mapThingiverseLicense(raw: string | undefined | null): ModelLice
   return {
     ...LICENSES['UNKNOWN'],
     rawProviderLicense: raw,
-    commercialUseReason: `Unrecognized Thingiverse license string: "${raw}"`,
+    commercialUseReason: `Unrecognized Thingiverse license: "${raw}" — shown by provider business rule`,
   };
 }
 

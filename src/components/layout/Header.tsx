@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useCartStore } from '@/lib/store';
 
 export function Header() {
@@ -15,10 +16,14 @@ export function Header() {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2.5 group">
-              <div className="w-9 h-9 bg-gradient-to-br from-primary to-blue-700 rounded-xl flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
-                <span className="text-white font-extrabold text-sm tracking-tight">M</span>
-              </div>
-              <span className="text-xl font-extrabold text-foreground tracking-tight">Modelo</span>
+              <Image
+                src="/logo.png"
+                alt="Modelo"
+                width={220}
+                height={68}
+                priority
+                className="h-14 w-auto object-contain"
+              />
             </Link>
 
             {/* Desktop Nav */}

@@ -1,5 +1,5 @@
 import type { CatalogEntry, NormalizedModel, ModelSummary } from '@/lib/types';
-import { isCommerciallyUsable } from '@/lib/types/model';
+import { isStorefrontEligible, storefrontEligibilityReason } from '@/lib/types/model';
 import { isStale } from '@/lib/types/catalog';
 import type { PaginationParams, ModelSearchOptions, PaginatedResult } from '@/lib/repositories';
 import type { SearchBackend } from '@/lib/search/search-backend';
@@ -35,10 +35,10 @@ export class CatalogStore implements SearchBackend {
   getForStorefront(id: string): CatalogEntry | null {
     const entry = this.entries.get(id);
     if (!entry) return null;
-    if (entry.availability !== 'available' || !isCommerciallyUsable(entry)) {
+    if (entry.availability !== 'available' || !isStorefrontEligible(entry, entry.catalog.providerId)) {
       if (process.env.NODE_ENV === 'development') {
         console.log(
-          `${TAG} Storefront access denied for "${entry.name}" (${entry.id}) — commercial use: ${entry.license.commercialUse}`,
+          `${TAG} Storefront access denied for "${entry.name}" (${entry.id}) — ${storefrontEligibilityReason(entry, entry.catalog.providerId)}`,
         );
       }
       return null;
@@ -58,16 +58,9 @@ export class CatalogStore implements SearchBackend {
   }
 
   search(query: string, options: ModelSearchOptions): PaginatedResult<ModelSummary> {
-    let models = this.allAvailable();
-
+    let models = this.getQueryScopedEntries(query, options.sortBy ?? 'relevance');
     if (options.category) {
       models = models.filter((m) => m.categories.includes(options.category!));
-    }
-
-    if (query.trim()) {
-      models = ranking.rank(models, query);
-    } else {
-      models = this.applySorting(models, options.sortBy ?? 'popularity');
     }
 
     const total = models.length;
@@ -80,6 +73,21 @@ export class CatalogStore implements SearchBackend {
       page: options.page,
       pageSize: options.pageSize,
     };
+  }
+
+  /**
+   * Returns all storefront-eligible entries for the current query context
+   * before any category filter is applied.
+   */
+  getQueryScopedEntries(
+    query: string,
+    sortBy: ModelSearchOptions['sortBy'] = 'relevance',
+  ): CatalogEntry[] {
+    let models = this.allAvailable();
+    if (query.trim()) {
+      return ranking.rank(models, query);
+    }
+    return this.applySorting(models, sortBy ?? 'popularity');
   }
 
   findByCategory(categoryId: string, pagination: PaginationParams): PaginatedResult<ModelSummary> {
@@ -193,7 +201,7 @@ export class CatalogStore implements SearchBackend {
   commerciallyExcludedCount(): number {
     let count = 0;
     for (const entry of this.entries.values()) {
-      if (entry.availability === 'available' && !isCommerciallyUsable(entry)) count++;
+      if (entry.availability === 'available' && !isStorefrontEligible(entry, entry.catalog.providerId)) count++;
     }
     return count;
   }
@@ -211,13 +219,13 @@ export class CatalogStore implements SearchBackend {
   getExcludedModels(): Array<{ id: string; name: string; license: string; commercialUse: string; reason: string }> {
     const excluded: Array<{ id: string; name: string; license: string; commercialUse: string; reason: string }> = [];
     for (const entry of this.entries.values()) {
-      if (entry.availability === 'available' && !isCommerciallyUsable(entry)) {
+      if (entry.availability === 'available' && !isStorefrontEligible(entry, entry.catalog.providerId)) {
         excluded.push({
           id: entry.id,
           name: entry.name,
           license: entry.license.spdxId,
           commercialUse: entry.license.commercialUse,
-          reason: entry.license.commercialUseReason ?? 'No reason provided',
+          reason: storefrontEligibilityReason(entry, entry.catalog.providerId),
         });
       }
     }
@@ -229,11 +237,9 @@ export class CatalogStore implements SearchBackend {
   private allAvailable(): CatalogEntry[] {
     return [...this.entries.values()].filter((m) => {
       if (m.availability !== 'available') return false;
-      if (!isCommerciallyUsable(m)) {
+      if (!isStorefrontEligible(m, m.catalog.providerId)) {
         if (process.env.NODE_ENV === 'development') {
-          console.log(
-            `${TAG} Excluded model "${m.name}" (${m.id}) — commercial use: ${m.license.commercialUse}, reason: ${m.license.commercialUseReason ?? m.license.spdxId}`,
-          );
+          console.log(`${TAG} ${storefrontEligibilityReason(m, m.catalog.providerId)} — "${m.name}" (${m.id})`);
         }
         return false;
       }
