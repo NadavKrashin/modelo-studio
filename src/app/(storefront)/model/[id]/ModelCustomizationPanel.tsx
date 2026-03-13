@@ -60,10 +60,19 @@ export function ModelCustomizationPanel({ model, filaments }: Props) {
       dimensions: scaledDimensions,
       defaultDimensions: model.defaultDimensions,
       filamentId: selectedFilament,
+      filamentOptions: filaments,
       quantity,
       hasEmbossedText: embossedText.trim().length > 0,
     });
-  }, [model.estimatedBasePrice, scaledDimensions, model.defaultDimensions, selectedFilament, quantity, embossedText]);
+  }, [model.estimatedBasePrice, scaledDimensions, model.defaultDimensions, selectedFilament, filaments, quantity, embossedText]);
+
+  if (filaments.length === 0) {
+    return (
+      <div className="rounded-2xl border border-border bg-muted-bg/50 p-5 text-sm text-muted">
+        אין כרגע פילמנטים פעילים במערכת. נסו שוב מאוחר יותר או פנו לתמיכה.
+      </div>
+    );
+  }
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;

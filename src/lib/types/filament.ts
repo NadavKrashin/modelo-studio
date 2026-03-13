@@ -15,16 +15,49 @@ export interface FilamentOption {
 
 export interface Filament {
   id: string;
-  material: FilamentMaterial;
-  brand: string;
-  colorHex: string;
+  name: string;
   colorName: string;
-  localizedColorName: string;
-  pricePerGram: number;
-  stockGrams: number;
-  minStockThreshold: number;
-  inStock: boolean;
+  hexColor: string;
+  materialType: FilamentMaterial;
+  available: boolean;
+  sortOrder: number;
+  priceModifier: number;
   isActive: boolean;
+  imageUrl?: string;
+  notes?: string;
   createdAt: string;
   updatedAt: string;
+
+  // Backward-compatible aliases used by existing UI components.
+  material: FilamentMaterial;
+  colorHex: string;
+  localizedColorName: string;
+  inStock: boolean;
+}
+
+export interface CreateFilamentInput {
+  id: string;
+  name: string;
+  colorName: string;
+  hexColor: string;
+  materialType: FilamentMaterial;
+  available: boolean;
+  sortOrder: number;
+  priceModifier?: number;
+  isActive?: boolean;
+  imageUrl?: string;
+  notes?: string;
+}
+
+export interface UpdateFilamentInput {
+  name?: string;
+  colorName?: string;
+  hexColor?: string;
+  materialType?: FilamentMaterial;
+  available?: boolean;
+  sortOrder?: number;
+  priceModifier?: number;
+  isActive?: boolean;
+  imageUrl?: string;
+  notes?: string;
 }

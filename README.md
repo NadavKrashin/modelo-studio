@@ -85,6 +85,7 @@ Set all `NEXT_PUBLIC_FIREBASE_*` variables and one server auth option:
 - `search_terms`
 - `order_events`
 - `model_cache`
+- `filaments`
 
 ### TODO markers for next phases
 

@@ -1,11 +1,11 @@
 import type { ModelDimensions, FilamentOption } from '@/lib/types';
-import { FILAMENT_OPTIONS } from '@/lib/constants/filaments';
 
 export interface PriceCalculationInput {
   basePrice: number;
   dimensions: ModelDimensions;
   defaultDimensions: ModelDimensions;
   filamentId: string;
+  filamentOptions?: FilamentOption[];
   quantity: number;
   hasEmbossedText: boolean;
 }
@@ -35,13 +35,13 @@ const MIN_PRICE = 10;
  * - Shipping cost integration
  */
 export function calculatePrice(input: PriceCalculationInput): PriceBreakdown {
-  const { basePrice, dimensions, defaultDimensions, filamentId, quantity, hasEmbossedText } = input;
+  const { basePrice, dimensions, defaultDimensions, filamentId, filamentOptions, quantity, hasEmbossedText } = input;
 
   const volumeRatio = calculateVolumeRatio(dimensions, defaultDimensions);
   const sizeMultiplier = Math.max(0.5, volumeRatio);
   const sizeAdjustedPrice = basePrice * sizeMultiplier;
 
-  const filament = FILAMENT_OPTIONS.find((f) => f.id === filamentId);
+  const filament = (filamentOptions ?? []).find((f) => f.id === filamentId);
   const materialModifier = filament?.priceModifier ?? 0;
 
   const embossedTextSurcharge = hasEmbossedText ? EMBOSSED_TEXT_SURCHARGE : 0;
@@ -72,6 +72,3 @@ export function formatPrice(amount: number): string {
   return `₪${amount.toFixed(2)}`;
 }
 
-export function getFilamentOptions(): FilamentOption[] {
-  return FILAMENT_OPTIONS.filter((f) => f.inStock);
-}

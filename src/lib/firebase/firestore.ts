@@ -3,6 +3,7 @@ export const FIRESTORE_COLLECTIONS = {
   searchTerms: 'search_terms',
   orderEvents: 'order_events',
   modelCache: 'model_cache',
+  filaments: 'filaments',
 } as const;
 
 export type FirestoreCollectionName =

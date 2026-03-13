@@ -1,17 +1,26 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useCartStore } from '@/lib/store';
 import { formatPrice } from '@/lib/pricing';
-import { FILAMENT_OPTIONS } from '@/lib/constants/filaments';
+import type { FilamentOption } from '@/lib/types';
 
 export default function CartPage() {
   const { items, subtotal, totalItems } = useCartStore();
   const removeItem = useCartStore((s) => s.removeItem);
   const updateQuantity = useCartStore((s) => s.updateQuantity);
+  const [filamentOptions, setFilamentOptions] = useState<FilamentOption[]>([]);
+
+  useEffect(() => {
+    fetch('/api/filaments')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: FilamentOption[]) => setFilamentOptions(Array.isArray(data) ? data : []))
+      .catch(() => setFilamentOptions([]));
+  }, []);
 
   const getFilamentColor = (filamentId: string) =>
-    FILAMENT_OPTIONS.find((f) => f.id === filamentId);
+    filamentOptions.find((f) => f.id === filamentId);
 
   if (items.length === 0) {
     return (

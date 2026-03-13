@@ -129,3 +129,24 @@ export const adminOrdersQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
+
+// ─── Filaments (admin) ──────────────────────────────────────
+
+export const createFilamentSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  colorName: z.string().min(1),
+  hexColor: z.string().regex(/^#([0-9a-fA-F]{6})$/, 'hexColor must be #RRGGBB'),
+  materialType: z.enum(['PLA', 'PETG', 'ABS', 'TPU', 'Nylon', 'Resin']),
+  available: z.boolean().default(true),
+  sortOrder: z.number().int().min(0).default(0),
+  priceModifier: z.number().min(0).default(0),
+  isActive: z.boolean().default(true),
+  imageUrl: z.string().url().optional(),
+  notes: z.string().max(500).optional(),
+});
+
+export const updateFilamentSchema = createFilamentSchema.partial().refine(
+  (obj) => Object.keys(obj).length > 0,
+  'At least one field is required',
+);

@@ -1,11 +1,13 @@
 import { FirestoreOrderRepository } from '@/lib/repositories/firestore-order-repository';
 import { FirestoreAnalyticsRepository } from '@/lib/repositories/firestore-analytics-repository';
-import { StaticFilamentRepository } from '@/lib/repositories/static-filament-repository';
+import { FirestoreFilamentRepository } from '@/lib/repositories/firestore-filament-repository';
 import { StaticCategoryRepository } from '@/lib/repositories/static-category-repository';
 import { InMemoryOrderRepository } from '@/lib/repositories/in-memory-order-repository';
 import { InMemoryAnalyticsRepository } from '@/lib/repositories/in-memory-analytics-repository';
+import { InMemoryFilamentRepository } from '@/lib/repositories/in-memory-filament-repository';
 import { OrderService } from './order-service';
 import { PricingService } from './pricing-service';
+import { FilamentService } from './filament-service';
 import { SearchService } from './search-service';
 import { ProviderRegistry, ProviderCache } from '@/lib/providers';
 import { ThingiverseProvider } from '@/lib/providers/thingiverse';
@@ -41,6 +43,7 @@ class ServiceContainer {
 
   readonly orderService: OrderService;
   readonly pricingService: PricingService;
+  readonly filamentService: FilamentService;
   readonly searchService: SearchService;
 
   constructor() {
@@ -59,7 +62,7 @@ class ServiceContainer {
 
     // ── Repositories ───────────────────────────────────────
     this.orders = firebaseConfigured ? new FirestoreOrderRepository() : new InMemoryOrderRepository();
-    this.filaments = new StaticFilamentRepository();
+    this.filaments = firebaseConfigured ? new FirestoreFilamentRepository() : new InMemoryFilamentRepository();
     this.categories = new StaticCategoryRepository();
     this.analytics = firebaseConfigured
       ? new FirestoreAnalyticsRepository(this.orders)
@@ -98,6 +101,7 @@ class ServiceContainer {
     this.searchAnalytics = new InMemorySearchAnalytics();
 
     // ── Services ───────────────────────────────────────────
+    this.filamentService = new FilamentService(this.filaments);
     this.pricingService = new PricingService(this.filaments);
     this.orderService = new OrderService(this.orders, this.pricingService, this.analytics);
     this.searchService = new SearchService(
@@ -138,6 +142,7 @@ export function getContainer(): ServiceContainer {
 
 export const getOrderService = () => getContainer().orderService;
 export const getPricingService = () => getContainer().pricingService;
+export const getFilamentService = () => getContainer().filamentService;
 export const getSearchService = () => getContainer().searchService;
 export const getProviderRegistry = () => getContainer().providerRegistry;
 export const getProviderCache = () => getContainer().providerCache;

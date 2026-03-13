@@ -13,7 +13,8 @@ export type {
 
 export { FirestoreOrderRepository } from './firestore-order-repository';
 export { FirestoreAnalyticsRepository } from './firestore-analytics-repository';
-export { StaticFilamentRepository } from './static-filament-repository';
+export { FirestoreFilamentRepository } from './firestore-filament-repository';
 export { StaticCategoryRepository } from './static-category-repository';
 export { InMemoryOrderRepository } from './in-memory-order-repository';
 export { InMemoryAnalyticsRepository } from './in-memory-analytics-repository';
+export { InMemoryFilamentRepository } from './in-memory-filament-repository';

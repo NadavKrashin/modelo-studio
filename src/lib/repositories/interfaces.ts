@@ -4,6 +4,8 @@ import type {
   Order,
   OrderStatus,
   Filament,
+  CreateFilamentInput,
+  UpdateFilamentInput,
   FilamentOption,
   Category,
   AdminStats,
@@ -77,8 +79,10 @@ export interface FilamentRepository {
   findAll(): Promise<Filament[]>;
   findById(id: string): Promise<Filament | null>;
   findAvailable(): Promise<FilamentOption[]>;
-  findByMaterial(material: string): Promise<Filament[]>;
-  updateStock(id: string, stockGrams: number): Promise<Filament | null>;
+  create(input: CreateFilamentInput): Promise<Filament>;
+  update(id: string, patch: UpdateFilamentInput): Promise<Filament | null>;
+  setAvailability(id: string, available: boolean): Promise<Filament | null>;
+  setSortOrder(id: string, sortOrder: number): Promise<Filament | null>;
   setActive(id: string, active: boolean): Promise<Filament | null>;
 }
 

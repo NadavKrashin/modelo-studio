@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { getPricingService } from '@/lib/services/container';
+import { getFilamentService } from '@/lib/services/container';
 
 export async function GET() {
   try {
-    const pricing = getPricingService();
-    const filaments = await pricing.getAvailableFilaments();
+    const service = getFilamentService();
+    const filaments = await service.getAvailableFilaments();
     return NextResponse.json(filaments);
   } catch (err) {
     console.error('[API] Filaments fetch error:', err);

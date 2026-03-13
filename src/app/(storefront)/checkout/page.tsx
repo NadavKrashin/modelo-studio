@@ -1,13 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCartStore } from '@/lib/store';
 import { formatPrice } from '@/lib/pricing';
-import type { DeliveryMethod } from '@/lib/types';
+import type { DeliveryMethod, FilamentOption } from '@/lib/types';
 import { DELIVERY_METHOD_LABELS } from '@/lib/types/order';
-import { FILAMENT_OPTIONS } from '@/lib/constants/filaments';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -22,6 +21,14 @@ export default function CheckoutPage() {
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>('shipping');
   const [customerNotes, setCustomerNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [availableFilaments, setAvailableFilaments] = useState<FilamentOption[]>([]);
+
+  useEffect(() => {
+    fetch('/api/filaments')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: FilamentOption[]) => setAvailableFilaments(Array.isArray(data) ? data : []))
+      .catch(() => setAvailableFilaments([]));
+  }, []);
 
   if (items.length === 0) {
     return (
@@ -203,7 +210,7 @@ export default function CheckoutPage() {
               <h3 className="font-bold text-foreground mb-4">סיכום הזמנה ({totalItems})</h3>
               <div className="space-y-3 mb-4">
                 {items.map((item) => {
-                  const fil = FILAMENT_OPTIONS.find((f) => f.id === item.customization.filamentId);
+                  const fil = availableFilaments.find((f) => f.id === item.customization.filamentId);
                   return (
                     <div key={item.id} className="flex items-start gap-3">
                       <div className="w-12 h-12 bg-muted-bg rounded-lg shrink-0 flex items-center justify-center relative overflow-hidden">

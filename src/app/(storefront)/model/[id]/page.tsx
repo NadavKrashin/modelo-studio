@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import { getSearchService } from '@/lib/services/container';
-import { FILAMENT_OPTIONS, CATEGORIES } from '@/lib/constants';
+import { getSearchService, getFilamentService } from '@/lib/services/container';
+import { CATEGORIES } from '@/lib/constants';
 import { notFound } from 'next/navigation';
 import { ModelCustomizationPanel } from './ModelCustomizationPanel';
 import { ModelGallery } from './ModelGallery';
@@ -15,14 +15,16 @@ interface ModelPageProps {
 export default async function ModelPage({ params }: ModelPageProps) {
   const { id } = await params;
   const searchService = getSearchService();
+  const filamentService = getFilamentService();
   const model = await searchService.getModel(id);
 
   if (!model) {
     notFound();
   }
 
-  const availableFilaments = FILAMENT_OPTIONS.filter(
-    (f) => f.inStock && model.supportedMaterials.includes(f.material)
+  const allAvailableFilaments = await filamentService.getAvailableFilaments();
+  const availableFilaments = allAvailableFilaments.filter((f) =>
+    model.supportedMaterials.includes(f.material),
   );
 
   const categoryNames = model.categories

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getFilamentRepo } from '@/lib/services/container';
+import { getFilamentService } from '@/lib/services/container';
 
 export async function PATCH(
   request: Request,
@@ -11,8 +11,8 @@ export async function PATCH(
     const body = await request.json();
     const isActive = !!body.isActive;
 
-    const filamentRepo = getFilamentRepo();
-    const updated = await filamentRepo.setActive(id, isActive);
+    const service = getFilamentService();
+    const updated = await service.toggleFilamentActive(id, isActive);
 
     if (!updated) {
       return NextResponse.json({ error: 'Filament not found' }, { status: 404 });

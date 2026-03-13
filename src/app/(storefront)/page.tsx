@@ -1,15 +1,15 @@
 import Link from 'next/link';
-import { FILAMENT_OPTIONS } from '@/lib/constants/filaments';
 import { CategoryIcon } from '@/components/ui/CategoryIcon';
-import { getSearchService, getCategoryRepo } from '@/lib/services/container';
+import { getSearchService, getCategoryRepo, getFilamentService } from '@/lib/services/container';
 
 export default async function HomePage() {
   const searchService = getSearchService();
   const categoryRepo = getCategoryRepo();
+  const filamentService = getFilamentService();
 
   const popularModels = await searchService.getPopular(8);
   const activeCategories = await categoryRepo.findActive();
-  const popularFilaments = FILAMENT_OPTIONS.filter((f) => f.inStock).slice(0, 12);
+  const popularFilaments = (await filamentService.getAvailableFilaments()).slice(0, 12);
 
   return (
     <>
@@ -373,9 +373,15 @@ export default async function HomePage() {
               </div>
             ))}
           </div>
-          <p className="text-center text-xs text-muted mt-8">
-            PLA • PETG • ABS • TPU — חומרים נוספים זמינים לפי דרישה
-          </p>
+          {popularFilaments.length > 0 ? (
+            <p className="text-center text-xs text-muted mt-8">
+              PLA • PETG • ABS • TPU — חומרים נוספים זמינים לפי דרישה
+            </p>
+          ) : (
+            <p className="text-center text-xs text-muted mt-8">
+              אין כרגע פילמנטים זמינים במערכת.
+            </p>
+          )}
         </div>
       </section>
 

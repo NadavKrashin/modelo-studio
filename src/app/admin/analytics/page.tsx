@@ -3,6 +3,9 @@ import { getAnalyticsRepo, getOrderService } from '@/lib/services/container';
 import { ORDER_STATUS_LABELS } from '@/lib/types/order';
 import type { OrderStatus } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 function formatPrice(n: number) { return `₪${n.toLocaleString('he-IL')}`; }
 
 export default async function AdminAnalyticsPage() {
