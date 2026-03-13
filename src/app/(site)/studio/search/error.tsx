@@ -21,3 +21,4 @@ export default function SearchError({ reset }: { reset: () => void }) {
     </div>
   );
 }
+

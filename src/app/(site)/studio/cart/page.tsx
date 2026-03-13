@@ -18,13 +18,13 @@ export default function CartPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 text-center animate-fade-in">
         <div className="w-24 h-24 bg-muted-bg rounded-3xl mx-auto mb-6 flex items-center justify-center">
           <svg className="w-12 h-12 text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
           </svg>
         </div>
         <h2 className="text-2xl font-extrabold text-foreground mb-2">הסל ריק</h2>
         <p className="text-muted mb-8 max-w-xs mx-auto">עדיין לא הוספתם מודלים לסל. התחילו לחפש ולהוסיף מודלים.</p>
         <Link
-          href="/search"
+          href="/studio/search"
           className="inline-flex items-center gap-2 bg-primary hover:bg-primary-hover text-white px-7 py-3.5 rounded-2xl font-semibold transition-all shadow-lg shadow-primary/20"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -43,7 +43,7 @@ export default function CartPage() {
           סל קניות
           <span className="text-base font-medium text-muted mr-2">({totalItems} פריטים)</span>
         </h1>
-        <Link href="/search" className="text-sm text-primary hover:underline font-medium">
+        <Link href="/studio/search" className="text-sm text-primary hover:underline font-medium">
           המשיכו לחפש
         </Link>
       </div>
@@ -82,7 +82,7 @@ export default function CartPage() {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Link href={`/model/${item.modelId}`} className="font-bold text-foreground hover:text-primary transition-colors text-sm md:text-base">
+                      <Link href={`/studio/model/${item.modelId}`} className="font-bold text-foreground hover:text-primary transition-colors text-sm md:text-base">
                         {item.localizedModelName}
                       </Link>
                       {item.sourceName && item.sourceName !== 'Modelo' && (
@@ -148,7 +148,7 @@ export default function CartPage() {
       </div>
 
       <Link
-        href="/checkout"
+        href="/studio/checkout"
         className="flex items-center justify-center gap-2 w-full bg-primary hover:bg-primary-hover active:scale-[0.99] text-white py-4 rounded-2xl font-bold text-[17px] transition-all shadow-xl shadow-primary/25"
       >
         המשך לתשלום
@@ -159,3 +159,4 @@ export default function CartPage() {
     </div>
   );
 }
+

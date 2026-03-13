@@ -20,7 +20,7 @@ export default function ModelError({ reset }: { reset: () => void }) {
           נסו שוב
         </button>
         <a
-          href="/search"
+          href="/studio/search"
           className="inline-flex items-center gap-2 bg-muted-bg text-foreground px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-200 transition-colors"
         >
           חזרה לחיפוש
@@ -29,3 +29,4 @@ export default function ModelError({ reset }: { reset: () => void }) {
     </div>
   );
 }
+

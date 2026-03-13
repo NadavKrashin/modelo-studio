@@ -2,8 +2,8 @@ import Link from 'next/link';
 import { getSearchService } from '@/lib/services/container';
 import { FILAMENT_OPTIONS, CATEGORIES } from '@/lib/constants';
 import { notFound } from 'next/navigation';
-import { ModelCustomizationPanel } from './ModelCustomizationPanel';
-import { ModelGallery } from './ModelGallery';
+import { ModelCustomizationPanel } from '@/app/(storefront)/model/[id]/ModelCustomizationPanel';
+import { ModelGallery } from '@/app/(storefront)/model/[id]/ModelGallery';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -38,15 +38,21 @@ export default async function ModelPage({ params }: ModelPageProps) {
       <div className="bg-white border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <nav className="flex items-center gap-2 text-sm text-muted overflow-x-auto whitespace-nowrap">
-            <Link href="/" className="hover:text-primary transition-colors shrink-0">דף הבית</Link>
+            <Link href="/studio" className="hover:text-primary transition-colors shrink-0">
+              דף הבית
+            </Link>
             <svg className="w-3.5 h-3.5 shrink-0 rotate-180 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
             </svg>
-            <Link href="/search" className="hover:text-primary transition-colors shrink-0">חיפוש</Link>
+            <Link href="/studio/search" className="hover:text-primary transition-colors shrink-0">
+              חיפוש
+            </Link>
             <svg className="w-3.5 h-3.5 shrink-0 rotate-180 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
             </svg>
-            <span className="text-foreground font-medium truncate" dir="auto">{model.localizedName}</span>
+            <span className="text-foreground font-medium truncate" dir="auto">
+              {model.localizedName}
+            </span>
           </nav>
         </div>
       </div>
@@ -77,21 +83,6 @@ export default async function ModelPage({ params }: ModelPageProps) {
                 {model.localizedName}
               </h1>
             </div>
-
-            {/* Tags */}
-            {model.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mb-6">
-                {model.tags.slice(0, 12).map((tag) => (
-                  <Link
-                    key={tag}
-                    href={`/search?q=${encodeURIComponent(tag)}`}
-                    className="text-[11px] bg-muted-bg text-muted px-2.5 py-1 rounded-full hover:bg-gray-200 hover:text-foreground transition-colors"
-                  >
-                    {tag}
-                  </Link>
-                ))}
-              </div>
-            )}
 
             {/* Specs Grid */}
             <div className="bg-muted-bg/60 rounded-2xl p-4 md:p-5 mb-6 grid grid-cols-2 gap-4">
@@ -173,7 +164,12 @@ export default async function ModelPage({ params }: ModelPageProps) {
                     {!model.license.allowsModification && <span>✗ ללא שינויים</span>}
                   </div>
                   {model.license.url && (
-                    <a href={model.license.url} target="_blank" rel="noopener noreferrer" className="inline-block mt-1.5 underline decoration-dotted underline-offset-2 hover:no-underline">
+                    <a
+                      href={model.license.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block mt-1.5 underline decoration-dotted underline-offset-2 hover:no-underline"
+                    >
                       קראו את הרישיון המלא ↗
                     </a>
                   )}
@@ -183,7 +179,12 @@ export default async function ModelPage({ params }: ModelPageProps) {
               <div className="text-xs text-muted">
                 <p>
                   מקור המודל:{' '}
-                  <a href={model.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">
+                  <a
+                    href={model.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline font-medium"
+                  >
                     {model.source.displayName} ↗
                   </a>
                 </p>
@@ -195,3 +196,4 @@ export default async function ModelPage({ params }: ModelPageProps) {
     </div>
   );
 }
+

@@ -3,11 +3,34 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { usePathname } from 'next/navigation';
 import { useCartStore } from '@/lib/store';
 
 export function Header() {
+  const pathname = usePathname();
   const totalItems = useCartStore((s) => s.totalItems);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const logoConfig = (() => {
+    if (pathname?.includes('/personal')) {
+      return {
+        src: '/logos/logo-personal.jpeg',
+        alt: 'Modelo Personal Logo',
+      };
+    }
+
+    if (pathname?.includes('/studio')) {
+      return {
+        src: '/logos/logo-studio.jpeg',
+        alt: 'Modelo Studio Logo',
+      };
+    }
+
+    return {
+      src: '/logos/logo-main.jpeg',
+      alt: 'Modelo Main Logo',
+    };
+  })();
 
   return (
     <>
@@ -17,29 +40,44 @@ export function Header() {
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2.5 group">
               <Image
-                src="/logo.png"
-                alt="Modelo"
+                src={logoConfig.src}
+                alt={logoConfig.alt}
                 width={220}
                 height={68}
                 priority
-                className="h-14 w-auto object-contain"
+                className="h-10 sm:h-12 w-auto object-contain"
               />
             </Link>
 
             {/* Desktop Nav */}
             <nav className="hidden md:flex items-center gap-1">
-              <Link href="/search" className="px-4 py-2 text-sm font-medium text-muted hover:text-foreground hover:bg-muted-bg rounded-xl transition-all">
-                חיפוש מודלים
+              <Link href="/" className="px-3.5 py-2 text-sm font-medium text-muted hover:text-foreground hover:bg-muted-bg rounded-xl transition-all">
+                Home
               </Link>
-              <Link href="/order/track" className="px-4 py-2 text-sm font-medium text-muted hover:text-foreground hover:bg-muted-bg rounded-xl transition-all">
-                מעקב הזמנה
+              <Link href="/studio" className="px-3.5 py-2 text-sm font-medium text-muted hover:text-foreground hover:bg-muted-bg rounded-xl transition-all">
+                Studio
+              </Link>
+              <Link href="/personal" className="px-3.5 py-2 text-sm font-medium text-muted hover:text-foreground hover:bg-muted-bg rounded-xl transition-all">
+                Personal
+              </Link>
+              <Link href="/about" className="px-3.5 py-2 text-sm font-medium text-muted hover:text-foreground hover:bg-muted-bg rounded-xl transition-all">
+                About
               </Link>
             </nav>
 
             {/* Actions */}
             <div className="flex items-center gap-2">
               <Link
-                href="/cart"
+                href="/studio/search"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-xl text-muted hover:text-foreground hover:bg-muted-bg transition-all"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                </svg>
+                <span>Search models</span>
+              </Link>
+              <Link
+                href="/studio/cart"
                 className="relative flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium rounded-xl hover:bg-muted-bg transition-all group"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-muted group-hover:text-foreground transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -80,8 +118,38 @@ export function Header() {
           <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
           <nav className="absolute top-16 right-0 left-0 bg-white border-b border-border shadow-xl animate-fade-in-fast">
             <div className="max-w-7xl mx-auto px-4 py-4 space-y-1">
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                <Link
+                  href="/"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center justify-center px-3 py-2 rounded-xl text-foreground bg-muted-bg text-sm font-medium"
+                >
+                  Home
+                </Link>
+                <Link
+                  href="/studio"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center justify-center px-3 py-2 rounded-xl text-foreground bg-primary/10 text-sm font-medium"
+                >
+                  Studio
+                </Link>
+                <Link
+                  href="/personal"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center justify-center px-3 py-2 rounded-xl text-foreground bg-muted-bg text-sm font-medium"
+                >
+                  Personal
+                </Link>
+                <Link
+                  href="/about"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center justify-center px-3 py-2 rounded-xl text-foreground bg-muted-bg text-sm font-medium"
+                >
+                  About
+                </Link>
+              </div>
               <Link
-                href="/search"
+                href="/studio/search"
                 onClick={() => setMobileOpen(false)}
                 className="flex items-center gap-3 px-4 py-3 rounded-xl text-foreground hover:bg-muted-bg transition-colors"
               >
@@ -91,7 +159,7 @@ export function Header() {
                 <span className="font-medium">חיפוש מודלים</span>
               </Link>
               <Link
-                href="/cart"
+                href="/studio/cart"
                 onClick={() => setMobileOpen(false)}
                 className="flex items-center gap-3 px-4 py-3 rounded-xl text-foreground hover:bg-muted-bg transition-colors"
               >
@@ -102,7 +170,7 @@ export function Header() {
                 {totalItems > 0 && <span className="text-xs bg-primary text-white px-2 py-0.5 rounded-full">{totalItems}</span>}
               </Link>
               <Link
-                href="/order/track"
+                href="/studio/order/track"
                 onClick={() => setMobileOpen(false)}
                 className="flex items-center gap-3 px-4 py-3 rounded-xl text-foreground hover:bg-muted-bg transition-colors"
               >
