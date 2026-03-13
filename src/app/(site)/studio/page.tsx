@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { CategoryIcon } from '@/components/ui/CategoryIcon';
 import { getSearchService, getCategoryRepo, getFilamentService } from '@/lib/services/container';
 
-export default async function HomePage() {
+export default async function StudioHomePage() {
   const searchService = getSearchService();
   const categoryRepo = getCategoryRepo();
   const filamentService = getFilamentService();
@@ -19,84 +19,41 @@ export default async function HomePage() {
         <div className="absolute inset-0 overflow-hidden pointer-events-none select-none" aria-hidden>
           <div className="absolute -top-24 -left-24 w-96 h-96 bg-white/5 rounded-full blur-3xl" />
           <div className="absolute bottom-0 right-0 w-[480px] h-[480px] bg-indigo-400/10 rounded-full blur-3xl" />
-          <svg className="absolute top-1/2 left-1/4 -translate-y-1/2 opacity-[0.06]" width="600" height="600" viewBox="0 0 64 64" fill="none">
-            <path d="M32 4L60 20V44L32 60L4 44V20L32 4Z" stroke="white" strokeWidth="0.5" />
-            <path d="M32 4L60 20L32 36L4 20L32 4Z" fill="white" fillOpacity="0.1" />
-          </svg>
         </div>
 
-        {/* 3D object illustration (desktop) */}
+        {/* Main hero photo (desktop) */}
         <div
           className="hidden lg:block absolute left-0 xl:left-6 top-1/2 -translate-y-1/2 pointer-events-none select-none"
           aria-hidden
         >
-          <svg width="360" height="360" viewBox="0 0 360 360" fill="none" className="opacity-90">
-            <defs>
-              <linearGradient id="heroObjectStroke" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.85" />
-                <stop offset="100%" stopColor="#9EE5F5" stopOpacity="0.75" />
-              </linearGradient>
-              <linearGradient id="heroObjectFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#DDF8FF" stopOpacity="0.18" />
-                <stop offset="100%" stopColor="#BFD8FF" stopOpacity="0.05" />
-              </linearGradient>
-              <filter id="heroObjectGlow" x="-30%" y="-30%" width="160%" height="160%">
-                <feGaussianBlur stdDeviation="6" />
-              </filter>
-            </defs>
-
-            {/* Soft glow */}
-            <ellipse cx="170" cy="292" rx="92" ry="20" fill="#9EE5F5" fillOpacity="0.2" filter="url(#heroObjectGlow)" />
-
-            {/* Print bed */}
-            <path d="M70 270L170 220L270 270L170 318L70 270Z" stroke="url(#heroObjectStroke)" strokeOpacity="0.55" strokeWidth="2" />
-            <path d="M95 270L170 234L245 270L170 306L95 270Z" stroke="url(#heroObjectStroke)" strokeOpacity="0.3" strokeWidth="1.5" />
-
-            {/* Isometric vase-like 3D object */}
-            <path
-              d="M170 92C188 92 205 102 214 121C220 135 220 150 211 165C204 178 202 192 208 205C216 223 208 243 190 252C183 256 177 258 170 258C163 258 157 256 150 252C132 243 124 223 132 205C138 192 136 178 129 165C120 150 120 135 126 121C135 102 152 92 170 92Z"
-              fill="url(#heroObjectFill)"
-              stroke="url(#heroObjectStroke)"
-              strokeWidth="2.5"
+          <div className="relative w-[260px] xl:w-[300px]">
+            <div className="absolute inset-0 bg-black/20 blur-3xl rounded-full translate-y-10" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/hero-figurine.png"
+              alt="מודל תלת מימדי מודפס"
+              className="relative w-full h-auto drop-shadow-2xl"
+              loading="lazy"
             />
-
-            {/* Layer lines to hint at 3D printing */}
-            <path d="M141 127C159 119 181 119 199 127" stroke="url(#heroObjectStroke)" strokeOpacity="0.6" strokeWidth="1.2" />
-            <path d="M136 145C157 136 183 136 204 145" stroke="url(#heroObjectStroke)" strokeOpacity="0.55" strokeWidth="1.2" />
-            <path d="M133 163C156 154 184 154 207 163" stroke="url(#heroObjectStroke)" strokeOpacity="0.5" strokeWidth="1.2" />
-            <path d="M132 181C156 172 184 172 208 181" stroke="url(#heroObjectStroke)" strokeOpacity="0.45" strokeWidth="1.2" />
-            <path d="M133 199C156 191 184 191 207 199" stroke="url(#heroObjectStroke)" strokeOpacity="0.4" strokeWidth="1.2" />
-            <path d="M137 217C157 209 183 209 203 217" stroke="url(#heroObjectStroke)" strokeOpacity="0.35" strokeWidth="1.2" />
-            <path d="M145 235C160 229 180 229 195 235" stroke="url(#heroObjectStroke)" strokeOpacity="0.35" strokeWidth="1.2" />
-
-            {/* Nozzle + guide lines */}
-            <circle cx="170" cy="66" r="8" fill="#CFF6FF" fillOpacity="0.9" />
-            <path d="M170 74V100" stroke="url(#heroObjectStroke)" strokeOpacity="0.8" strokeWidth="2" />
-            <path d="M124 86H216" stroke="url(#heroObjectStroke)" strokeOpacity="0.35" strokeWidth="1.5" />
-            <path d="M124 78H216" stroke="url(#heroObjectStroke)" strokeOpacity="0.2" strokeWidth="1.5" />
-          </svg>
+          </div>
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-20 md:pt-24 md:pb-28">
-          <div className="max-w-2xl lg:max-w-3xl">
+          <div className="max-w-2xl lg:max-w-3xl ml-auto lg:ml-[320px]">
             <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm text-blue-100 text-xs font-medium px-3.5 py-1.5 rounded-full mb-6 border border-white/10">
               <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
               אלפי מודלים זמינים להדפסה
             </div>
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-[1.15] mb-5 tracking-tight">
-              כל מודל תלת מימדי,
-              <br />
-              <span className="bg-gradient-to-l from-blue-200 to-cyan-200 bg-clip-text text-transparent">
-                מודפס עבורכם
-              </span>
+              Modelo Studio
             </h1>
             <p className="text-base sm:text-lg text-blue-100/90 mb-9 leading-relaxed max-w-xl">
-              חפשו מתוך אלפי מודלים ממקורות מובילים, התאימו צבע וגודל, והזמינו הדפסת 3D באיכות גבוהה ישירות עד אליכם.
+              Browse thousands of ready‑to‑print 3D models, customize size and color, and order high‑quality 3D prints delivered to your door.
             </p>
 
             {/* Search Bar */}
-            <form action="/search" method="GET">
+            <form action="/studio/search" method="GET">
               <div className="max-w-2xl">
                 <div
                   dir="rtl"
@@ -132,7 +89,7 @@ export default async function HomePage() {
               {['דרקון', 'מעמד טלפון', 'עציץ', 'מחזיק מפתחות', 'אהיל'].map((term) => (
                 <Link
                   key={term}
-                  href={`/search?q=${encodeURIComponent(term)}`}
+                  href={`/studio/search?q=${encodeURIComponent(term)}`}
                   className="text-xs text-blue-100 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full transition-colors border border-white/10"
                 >
                   {term}
@@ -185,7 +142,7 @@ export default async function HomePage() {
           {activeCategories.map((cat, i) => (
             <Link
               key={cat.id}
-              href={`/search?category=${cat.slug}`}
+              href={`/studio/search?category=${cat.slug}`}
               className={`group flex flex-col items-center gap-3 bg-white rounded-2xl border border-border/80 p-5 md:p-6 text-center hover:shadow-lg hover:border-primary/20 hover:-translate-y-0.5 transition-all duration-200 animate-fade-in stagger-${Math.min(i + 1, 8)}`}
             >
               <div className="w-12 h-12 bg-primary-50 rounded-xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-200">
@@ -202,13 +159,13 @@ export default async function HomePage() {
       {/* ─── POPULAR MODELS ─── */}
       <section className="bg-gradient-to-b from-muted-bg/50 to-muted-bg py-16 md:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-end justify-between mb-10 md:mb-12">
+          <div className="flex items-end justify-between mb  -10 md:mb-12">
             <div>
               <h2 className="text-2xl md:text-3xl font-extrabold text-foreground mb-1.5">הכי פופולריים</h2>
               <p className="text-muted text-sm md:text-base">המודלים שהכי מזמינים השבוע</p>
             </div>
             <Link
-              href="/search"
+              href="/studio/search"
               className="hidden sm:inline-flex items-center gap-1.5 text-primary hover:text-primary-hover font-semibold text-sm transition-colors"
             >
               כל המודלים
@@ -223,11 +180,12 @@ export default async function HomePage() {
               {popularModels.map((model, i) => (
                 <Link
                   key={model.id}
-                  href={`/model/${model.id}`}
+                  href={`/studio/model/${model.id}`}
                   className={`group bg-white rounded-2xl border border-border/80 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-200 animate-fade-in stagger-${Math.min(i + 1, 8)}`}
                 >
                   <div className="aspect-[4/3] relative overflow-hidden bg-muted-bg">
                     {model.thumbnailUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={model.thumbnailUrl}
                         alt={model.localizedName}
@@ -272,7 +230,7 @@ export default async function HomePage() {
               <h3 className="text-lg font-bold text-foreground mb-2">חפשו מודלים מהמקורות המובילים</h3>
               <p className="text-muted text-sm mb-6 max-w-md mx-auto">השתמשו בחיפוש כדי לגלות אלפי מודלים תלת מימדיים מ-Thingiverse, MyMiniFactory ועוד</p>
               <Link
-                href="/search"
+                href="/studio/search"
                 className="inline-flex items-center gap-2 bg-primary hover:bg-primary-hover text-white px-6 py-3 rounded-xl font-semibold text-sm transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -286,7 +244,7 @@ export default async function HomePage() {
           {popularModels.length > 0 && (
             <div className="sm:hidden text-center mt-8">
               <Link
-                href="/search"
+                href="/studio/search"
                 className="inline-flex items-center gap-1.5 text-primary font-semibold text-sm"
               >
                 כל המודלים
@@ -311,42 +269,24 @@ export default async function HomePage() {
               step: '01',
               title: 'חפשו מודל',
               desc: 'גלו מודלים ממגוון מקורות מובילים. חפשו בעברית או באנגלית ומצאו בדיוק את מה שאתם מחפשים.',
-              icon: (
-                <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                </svg>
-              ),
             },
             {
               step: '02',
               title: 'התאימו אישית',
               desc: 'בחרו צבע ממגוון פילמנטים, שנו גודל, הוסיפו טקסט בולט, צרפו הערות או תמונות ייחוס.',
-              icon: (
-                <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.4 2.245 4.5 4.5 0 0 0 8.4-2.245c0-.399-.078-.78-.22-1.128Zm0 0a15.998 15.998 0 0 0 3.388-1.62m-5.043-.025a15.994 15.994 0 0 1 1.622-3.395m3.42 3.42a15.995 15.995 0 0 0 4.764-4.648l3.876-5.814a1.151 1.151 0 0 0-1.597-1.597L14.146 6.32a15.996 15.996 0 0 0-4.649 4.763m3.42 3.42a6.776 6.776 0 0 0-3.42-3.42" />
-                </svg>
-              ),
             },
             {
               step: '03',
               title: 'קבלו עד הבית',
               desc: 'השלימו את ההזמנה כאורחים, ללא צורך בהרשמה. קבלו את המודל המודפס עד הבית או באיסוף עצמי.',
-              icon: (
-                <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
-                </svg>
-              ),
             },
           ].map((item) => (
             <div key={item.step} className="text-center group">
               <div className="relative w-16 h-16 mx-auto mb-5">
                 <div className="absolute inset-0 bg-primary/10 rounded-2xl rotate-6 group-hover:rotate-12 transition-transform" />
                 <div className="relative bg-primary text-white rounded-2xl w-full h-full flex items-center justify-center">
-                  {item.icon}
+                  <span className="text-lg font-semibold">{item.step}</span>
                 </div>
-                <span className="absolute -top-2 -right-2 text-[11px] font-bold bg-foreground text-white w-6 h-6 rounded-full flex items-center justify-center">
-                  {item.step}
-                </span>
               </div>
               <h3 className="text-lg font-bold text-foreground mb-2">{item.title}</h3>
               <p className="text-muted text-sm leading-relaxed max-w-xs mx-auto">{item.desc}</p>
@@ -358,7 +298,7 @@ export default async function HomePage() {
       {/* ─── FILAMENT COLORS ─── */}
       <section className="bg-white border-y border-border py-14 md:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10">
+          <div className="text-center mb  -10">
             <h2 className="text-2xl md:text-3xl font-extrabold text-foreground mb-2">צבעים וחומרים</h2>
             <p className="text-muted text-sm md:text-base">מגוון רחב של צבעי פילמנט וחומרי הדפסה</p>
           </div>
@@ -384,29 +324,7 @@ export default async function HomePage() {
           )}
         </div>
       </section>
-
-      {/* ─── CTA ─── */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-900 to-primary/80" />
-        <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'20\' height=\'20\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Ccircle cx=\'1\' cy=\'1\' r=\'1\' fill=\'white\'/%3E%3C/svg%3E")', backgroundSize: '20px 20px' }} />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28 text-center">
-          <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-4">
-            מוכנים להדפיס?
-          </h2>
-          <p className="text-base md:text-lg text-gray-300 mb-10 max-w-lg mx-auto leading-relaxed">
-            התחילו לחפש מודלים עכשיו. ללא הרשמה, ללא התחייבות.
-          </p>
-          <Link
-            href="/search"
-            className="inline-flex items-center gap-2.5 bg-white hover:bg-gray-50 text-foreground px-8 py-4 rounded-2xl font-bold text-base transition-all shadow-xl hover:shadow-2xl hover:-translate-y-0.5"
-          >
-            התחילו לחפש
-            <svg className="w-5 h-5 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-            </svg>
-          </Link>
-        </div>
-      </section>
     </>
   );
 }
+

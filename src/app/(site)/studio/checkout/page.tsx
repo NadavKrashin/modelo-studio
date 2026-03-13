@@ -34,7 +34,7 @@ export default function CheckoutPage() {
     return (
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center animate-fade-in">
         <p className="text-muted mb-4">הסל ריק</p>
-        <Link href="/search" className="text-primary font-semibold hover:underline">חזרה לחיפוש</Link>
+        <Link href="/studio/search" className="text-primary font-semibold hover:underline">חזרה לחיפוש</Link>
       </div>
     );
   }
@@ -64,23 +64,30 @@ export default function CheckoutPage() {
 
       const confirmation = await res.json();
       clearCart();
-      router.push(`/order/confirmation?orderNumber=${confirmation.orderNumber}`);
+      router.push(`/studio/order/confirmation?orderNumber=${confirmation.orderNumber}`);
     } catch {
       alert('שגיאה בשליחת ההזמנה. נסו שוב.');
       setIsSubmitting(false);
     }
   };
 
-  const inputCls = 'w-full px-4 py-3 rounded-xl border border-border bg-white text-foreground placeholder-gray-400 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-all';
+  const inputCls =
+    'w-full px-4 py-3 rounded-xl border border-border bg-white text-foreground placeholder-gray-400 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-all';
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
       {/* Steps indicator */}
       <div className="flex items-center justify-center gap-2 text-xs text-muted mb-8">
-        <Link href="/cart" className="text-primary font-medium">סל</Link>
-        <svg className="w-3 h-3 rotate-180 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>
+        <Link href="/studio/cart" className="text-primary font-medium">
+          סל
+        </Link>
+        <svg className="w-3 h-3 rotate-180 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+        </svg>
         <span className="text-foreground font-bold">תשלום</span>
-        <svg className="w-3 h-3 rotate-180 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>
+        <svg className="w-3 h-3 rotate-180 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+        </svg>
         <span>אישור</span>
       </div>
 
@@ -92,25 +99,56 @@ export default function CheckoutPage() {
           {/* Contact */}
           <section className="bg-white rounded-2xl border border-border/80 p-5 md:p-6">
             <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
-              <span className="w-6 h-6 bg-primary text-white text-[11px] font-bold rounded-lg flex items-center justify-center">1</span>
+              <span className="w-6 h-6 bg-primary text-white text-[11px] font-bold rounded-lg flex items-center justify-center">
+                1
+              </span>
               פרטי התקשרות
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-foreground mb-1.5">שם מלא *</label>
-                <input type="text" required value={fullName} onChange={(e) => setFullName(e.target.value)} className={inputCls} placeholder="ישראל ישראלי" />
+                <input
+                  type="text"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className={inputCls}
+                  placeholder="ישראל ישראלי"
+                />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-foreground mb-1.5">אימייל *</label>
-                <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} dir="ltr" placeholder="email@example.com" />
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className={inputCls}
+                  dir="ltr"
+                  placeholder="email@example.com"
+                />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-foreground mb-1.5">טלפון *</label>
-                <input type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} dir="ltr" placeholder="050-1234567" />
+                <input
+                  type="tel"
+                  required
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className={inputCls}
+                  dir="ltr"
+                  placeholder="050-1234567"
+                />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-foreground mb-1.5">עיר</label>
-                <input type="text" value={city} onChange={(e) => setCity(e.target.value)} className={inputCls} placeholder="תל אביב" />
+                <input
+                  type="text"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  className={inputCls}
+                  placeholder="תל אביב"
+                />
               </div>
             </div>
           </section>
@@ -118,7 +156,9 @@ export default function CheckoutPage() {
           {/* Delivery */}
           <section className="bg-white rounded-2xl border border-border/80 p-5 md:p-6">
             <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
-              <span className="w-6 h-6 bg-primary text-white text-[11px] font-bold rounded-lg flex items-center justify-center">2</span>
+              <span className="w-6 h-6 bg-primary text-white text-[11px] font-bold rounded-lg flex items-center justify-center">
+                2
+              </span>
               אופן קבלה
             </h2>
             <div className="grid grid-cols-2 gap-3">
@@ -135,11 +175,24 @@ export default function CheckoutPage() {
                 >
                   {key === 'shipping' ? (
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12"
+                      />
                     </svg>
                   ) : (
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"
+                      />
                     </svg>
                   )}
                   {label}
@@ -149,7 +202,13 @@ export default function CheckoutPage() {
             {deliveryMethod === 'shipping' && (
               <div className="mt-4">
                 <label className="block text-xs font-semibold text-foreground mb-1.5">כתובת למשלוח</label>
-                <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} className={inputCls} placeholder="רחוב, מספר בית, דירה" />
+                <input
+                  type="text"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className={inputCls}
+                  placeholder="רחוב, מספר בית, דירה"
+                />
               </div>
             )}
           </section>
@@ -157,7 +216,9 @@ export default function CheckoutPage() {
           {/* Notes */}
           <section className="bg-white rounded-2xl border border-border/80 p-5 md:p-6">
             <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
-              <span className="w-6 h-6 bg-primary text-white text-[11px] font-bold rounded-lg flex items-center justify-center">3</span>
+              <span className="w-6 h-6 bg-primary text-white text-[11px] font-bold rounded-lg flex items-center justify-center">
+                3
+              </span>
               הערות להזמנה
             </h2>
             <textarea
@@ -172,12 +233,18 @@ export default function CheckoutPage() {
           {/* Payment */}
           <section className="bg-white rounded-2xl border border-border/80 p-5 md:p-6">
             <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
-              <span className="w-6 h-6 bg-primary text-white text-[11px] font-bold rounded-lg flex items-center justify-center">4</span>
+              <span className="w-6 h-6 bg-primary text-white text-[11px] font-bold rounded-lg flex items-center justify-center">
+                4
+              </span>
               תשלום
             </h2>
             <div className="bg-muted-bg/60 rounded-xl p-6 text-center border border-dashed border-border">
               <svg className="w-8 h-8 text-muted/40 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z"
+                />
               </svg>
               <p className="text-sm font-medium text-muted mb-1">מערכת תשלום תשולב בקרוב</p>
               <p className="text-[11px] text-muted">התשלום ייגבה לאחר אישור ההזמנה על ידי הצוות</p>
@@ -227,14 +294,19 @@ export default function CheckoutPage() {
                           </svg>
                         )}
                         {fil && (
-                          <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border border-white" style={{ backgroundColor: fil.colorHex }} />
+                          <div
+                            className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border border-white"
+                            style={{ backgroundColor: fil.colorHex }}
+                          />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">{item.localizedModelName}</p>
                         <p className="text-[11px] text-muted">כמות: {item.quantity}</p>
                       </div>
-                      <span className="text-sm font-bold text-foreground shrink-0">{formatPrice(item.subtotal)}</span>
+                      <span className="text-sm font-bold text-foreground shrink-0">
+                        {formatPrice(item.subtotal)}
+                      </span>
                     </div>
                   );
                 })}
@@ -272,3 +344,4 @@ export default function CheckoutPage() {
     </div>
   );
 }
+

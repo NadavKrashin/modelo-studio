@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { OrderTracker } from './OrderTracker';
+import { OrderTracker } from '@/app/(storefront)/order/track/OrderTracker';
 
 export default function OrderTrackPage() {
   return (
@@ -14,3 +14,4 @@ export default function OrderTrackPage() {
     </Suspense>
   );
 }
+

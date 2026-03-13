@@ -24,19 +24,19 @@ export function Footer() {
           <div>
             <h3 className="text-white font-semibold mb-4 text-sm">שירותים</h3>
             <ul className="space-y-2.5 text-sm">
-              <li><Link href="/search" className="hover:text-white transition-colors">חיפוש מודלים</Link></li>
-              <li><Link href="/search?category=home-decor" className="hover:text-white transition-colors">עיצוב הבית</Link></li>
-              <li><Link href="/search?category=gadgets" className="hover:text-white transition-colors">גאדג׳טים וכלים</Link></li>
-              <li><Link href="/search?category=gifts" className="hover:text-white transition-colors">מתנות אישיות</Link></li>
+              <li><Link href="/studio/search" className="hover:text-white transition-colors">חיפוש מודלים</Link></li>
+              <li><Link href="/studio/search?category=home-decor" className="hover:text-white transition-colors">עיצוב הבית</Link></li>
+              <li><Link href="/studio/search?category=gadgets" className="hover:text-white transition-colors">גאדג׳טים וכלים</Link></li>
+              <li><Link href="/studio/search?category=gifts" className="hover:text-white transition-colors">מתנות אישיות</Link></li>
             </ul>
           </div>
 
           <div>
             <h3 className="text-white font-semibold mb-4 text-sm">לקוחות</h3>
             <ul className="space-y-2.5 text-sm">
-              <li><Link href="/cart" className="hover:text-white transition-colors">סל קניות</Link></li>
-              <li><Link href="/order/track" className="hover:text-white transition-colors">מעקב הזמנה</Link></li>
-              <li><Link href="/search?category=toys" className="hover:text-white transition-colors">צעצועים ומשחקים</Link></li>
+              <li><Link href="/studio/cart" className="hover:text-white transition-colors">סל קניות</Link></li>
+              <li><Link href="/studio/order/track" className="hover:text-white transition-colors">מעקב הזמנה</Link></li>
+              <li><Link href="/studio/search?category=toys" className="hover:text-white transition-colors">צעצועים ומשחקים</Link></li>
             </ul>
           </div>
 
