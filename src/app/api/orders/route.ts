@@ -29,12 +29,14 @@ export async function POST(request: Request) {
   try {
     const searchService = getSearchService();
     for (const item of result.data.items) {
-      const model = await searchService.getModel(item.modelId);
-      if (!model) {
-        return NextResponse.json(
-          { error: `Model "${item.modelId}" is not available for commercial use` },
-          { status: 403 },
-        );
+      if (item.kind === 'studio_model') {
+        const model = await searchService.getModel(item.modelId);
+        if (!model) {
+          return NextResponse.json(
+            { error: `Model "${item.modelId}" is not available for commercial use` },
+            { status: 403 },
+          );
+        }
       }
     }
 

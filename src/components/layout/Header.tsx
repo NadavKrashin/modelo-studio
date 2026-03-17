@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { ShoppingBag, Trophy } from 'lucide-react';
-import { useCart } from '@/context/CartContext';
+import { useCartStore } from '@/lib/store';
 
 interface DepartmentLogoLinkProps {
   href: string;
@@ -67,7 +67,7 @@ function DepartmentLogoLink({ href, label, isActive }: DepartmentLogoLinkProps) 
 
 export function Header() {
   const pathname = usePathname() || '';
-  const { totalItems } = useCart();
+  const totalItems = useCartStore((s) => s.totalItems);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   let logoSrc = '/images/logo/main.jpeg';

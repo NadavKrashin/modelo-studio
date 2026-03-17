@@ -45,7 +45,9 @@ export class OrderService {
     const total = subtotal + shippingCost;
 
     const requiresApproval = lineItems.some(
-      (li) => li.customization.embossedText || (li.customization.referenceImages?.length ?? 0) > 0
+      (li) =>
+        li.kind === 'studio_model' &&
+        (li.customization.embossedText || (li.customization.referenceImages?.length ?? 0) > 0)
     );
 
     const now = new Date().toISOString();

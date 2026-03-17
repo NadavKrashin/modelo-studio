@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useCart } from '@/context/CartContext';
+import { useCartStore } from '@/lib/store';
 
 type ModelType = 'person' | 'animal';
 type QuantityType = 'single' | 'couple' | null;
@@ -50,7 +50,7 @@ const INITIAL_STATE: PersonalWizardState = {
 
 export function PersonalWizard({ onClose }: { onClose: () => void }) {
   const router = useRouter();
-  const { addToCart } = useCart();
+  const addItem = useCartStore((s) => s.addItem);
   const [wizardState, setWizardState] = useState<PersonalWizardState>(INITIAL_STATE);
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -200,12 +200,11 @@ export function PersonalWizard({ onClose }: { onClose: () => void }) {
         ? crypto.randomUUID()
         : `personal-${Date.now()}`;
 
-    addToCart({
-      id: itemId,
-      name: 'מודלו פרסונל - עיצוב אישי',
-      price: totalPrice || 199,
-      quantity: 1,
-      image: wizardState.uploadedPhoto || '/images/logo/logo-personal.jpeg',
+    const price = totalPrice || 199;
+    addItem({
+      kind: 'simple',
+      title: 'מודלו פרסונל - עיצוב אישי',
+      imageUrl: wizardState.uploadedPhoto || '/images/logo/logo-personal.jpeg',
       department: 'personal',
       attributes: [
         `סוג מודל: ${modelTypeLabel}`,
@@ -213,6 +212,9 @@ export function PersonalWizard({ onClose }: { onClose: () => void }) {
         `צבע בסיס: ${wizardState.baseColor || 'לא נבחר'}`,
         `הקדשה: ${wizardState.dedicationText || 'ללא הקדשה'}`,
       ],
+      quantity: 1,
+      unitPrice: price,
+      subtotal: price,
     });
 
     router.push('/cart');

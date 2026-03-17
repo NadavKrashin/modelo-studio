@@ -28,6 +28,10 @@ export class PricingService {
    * Uses the client-submitted unitPrice as the base and validates with scale.
    */
   calculateItemPrice(item: CartItem): number {
+    if (item.kind === 'simple') {
+      return Math.max(Math.round(item.unitPrice), MIN_PRICE);
+    }
+
     const scale = item.customization.scale ?? 1;
     const volumeRatio = Math.pow(scale, 3);
     const hasEmbossed = !!item.customization.embossedText?.trim();
@@ -42,6 +46,19 @@ export class PricingService {
    * Full breakdown for display or verification.
    */
   getBreakdown(item: CartItem): PriceBreakdown {
+    if (item.kind === 'simple') {
+      const unitPrice = Math.max(Math.round(item.unitPrice), MIN_PRICE);
+      return {
+        basePrice: unitPrice,
+        sizeMultiplier: 1,
+        filamentMultiplier: 1,
+        embossedTextSurcharge: 0,
+        unitPrice,
+        quantity: item.quantity,
+        subtotal: unitPrice * item.quantity,
+      };
+    }
+
     const scale = item.customization.scale ?? 1;
     const volumeRatio = Math.pow(scale, 3);
     const hasEmbossed = !!item.customization.embossedText?.trim();

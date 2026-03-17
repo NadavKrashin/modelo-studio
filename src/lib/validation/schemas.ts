@@ -59,7 +59,8 @@ const customizationSchema = z.object({
   referenceImages: z.array(referenceUploadSchema).max(5).optional(),
 });
 
-const cartItemSchema = z.object({
+const studioCartItemSchema = z.object({
+  kind: z.literal('studio_model'),
   id: z.string(),
   modelId: z.string().min(1),
   modelName: z.string().min(1),
@@ -73,6 +74,21 @@ const cartItemSchema = z.object({
   subtotal: z.number().min(0),
   addedAt: z.string().default(new Date().toISOString()),
 });
+
+const simpleCartItemSchema = z.object({
+  kind: z.literal('simple'),
+  id: z.string(),
+  title: z.string().min(1),
+  imageUrl: z.string().optional(),
+  department: z.enum(['cities', 'personal', 'sport', 'studio', 'other']).default('other'),
+  attributes: z.array(z.string().max(200)).max(20).optional(),
+  quantity: z.number().int().min(1).max(100),
+  unitPrice: z.number().min(0),
+  subtotal: z.number().min(0),
+  addedAt: z.string().default(new Date().toISOString()),
+});
+
+const cartItemSchema = z.discriminatedUnion('kind', [studioCartItemSchema, simpleCartItemSchema]);
 
 export const createOrderSchema = z.object({
   customer: customerDetailsSchema,

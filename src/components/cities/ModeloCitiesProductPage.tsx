@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Leaf, Search, Square, Wrench } from 'lucide-react';
-import { useCart } from '@/context/CartContext';
+import { useCartStore } from '@/lib/store';
 
 const galleryImages = [
   '/images/cities/tel-aviv.jpeg',
@@ -32,7 +32,7 @@ const sizeOptions = [
 ] as const;
 
 export default function ModeloCitiesProductPage() {
-  const { addToCart } = useCart();
+  const addItem = useCartStore((s) => s.addItem);
   const [mainImage, setMainImage] = useState(galleryImages[0]);
   const [selectedCity, setSelectedCity] = useState('');
   const [selectedSize, setSelectedSize] = useState<'rectangle' | 'cube' | null>(null);
@@ -55,18 +55,19 @@ export default function ModeloCitiesProductPage() {
   const handleAddToCart = () => {
     if (!selectedCity || !selectedSize || !selectedColor || !selectedSizeOption) return;
 
-    addToCart({
-      id: `cities-${selectedCity}-${selectedSize}-${selectedColor}`,
-      name: 'מודלו סיטיז - דגם תלת מימד',
-      price: selectedSizeOption.price,
-      quantity: 1,
-      image: galleryImages[0],
+    addItem({
+      kind: 'simple',
+      title: 'מודלו סיטיז - דגם תלת מימד',
+      imageUrl: galleryImages[0],
       department: 'cities',
       attributes: [
         selectedCity,
         selectedSize === 'rectangle' ? '17x12 ס״מ' : '15x15 ס״מ',
         selectedColor === 'black' ? 'מסגרת שחורה' : 'מסגרת לבנה',
       ],
+      quantity: 1,
+      unitPrice: selectedSizeOption.price,
+      subtotal: selectedSizeOption.price,
     });
 
     setJustAdded(true);
