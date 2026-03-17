@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useCart } from '@/context/CartContext';
 
 type ModelType = 'person' | 'animal';
 type QuantityType = 'single' | 'couple' | null;
@@ -47,6 +49,8 @@ const INITIAL_STATE: PersonalWizardState = {
 };
 
 export function PersonalWizard({ onClose }: { onClose: () => void }) {
+  const router = useRouter();
+  const { addToCart } = useCart();
   const [wizardState, setWizardState] = useState<PersonalWizardState>(INITIAL_STATE);
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -180,6 +184,38 @@ export function PersonalWizard({ onClose }: { onClose: () => void }) {
   const goToBack = () => {
     if (isFirstStep) return;
     setActiveStepIndex((prev) => prev - 1);
+  };
+
+  const handleAddToCart = () => {
+    const modelTypeLabel = wizardState.modelType === 'person' ? 'בן אדם' : 'בעל חיים';
+    const quantityLabel =
+      wizardState.quantity === 'couple'
+        ? 'זוג'
+        : wizardState.quantity === 'single'
+          ? 'יחיד'
+          : 'לא נבחר';
+
+    const itemId =
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `personal-${Date.now()}`;
+
+    addToCart({
+      id: itemId,
+      name: 'מודלו פרסונל - עיצוב אישי',
+      price: totalPrice || 199,
+      quantity: 1,
+      image: wizardState.uploadedPhoto || '/images/logo/logo-personal.jpeg',
+      department: 'personal',
+      attributes: [
+        `סוג מודל: ${modelTypeLabel}`,
+        `כמות: ${quantityLabel}`,
+        `צבע בסיס: ${wizardState.baseColor || 'לא נבחר'}`,
+        `הקדשה: ${wizardState.dedicationText || 'ללא הקדשה'}`,
+      ],
+    });
+
+    router.push('/cart');
   };
 
   return (
@@ -627,9 +663,7 @@ export function PersonalWizard({ onClose }: { onClose: () => void }) {
 
                   <div className="sticky bottom-0 mt-6 pt-5 bg-gradient-to-t from-gray-50 via-gray-50 to-transparent">
                     <button
-                      onClick={() => {
-                        console.log('Personal wizard final state:', wizardState);
-                      }}
+                      onClick={handleAddToCart}
                       className="w-full rounded-2xl bg-gray-900 px-6 py-4 text-white font-bold hover:bg-black transition-colors shadow-lg shadow-gray-900/20"
                     >
                       הוסף לסל
@@ -655,13 +689,17 @@ export function PersonalWizard({ onClose }: { onClose: () => void }) {
             <p className="text-lg font-extrabold text-primary" dir="ltr">₪{totalPrice}</p>
           </div>
 
-          <button
-            onClick={goToNext}
-            disabled={!canGoNext || isLastStep}
-            className="rounded-xl bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-black disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            המשך
-          </button>
+          {!isLastStep ? (
+            <button
+              onClick={goToNext}
+              disabled={!canGoNext}
+              className="rounded-xl bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-black disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              המשך
+            </button>
+          ) : (
+            <div className="w-[74px]" />
+          )}
         </div>
       </div>
     </div>
