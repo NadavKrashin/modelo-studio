@@ -4,44 +4,95 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { useCartStore } from '@/lib/store';
+import { ShoppingBag, Trophy } from 'lucide-react';
+import { useCart } from '@/context/CartContext';
+
+interface DepartmentLogoLinkProps {
+  href: string;
+  label: 'cities' | 'personal' | 'studio' | 'sports';
+  isActive: boolean;
+}
+
+function DepartmentLogoLink({ href, label, isActive }: DepartmentLogoLinkProps) {
+  const activeCls = isActive ? 'text-cyan-600' : 'text-slate-600';
+
+  return (
+    <Link
+      href={href}
+      className={`group inline-flex flex-col items-center justify-center gap-1 px-2 py-1 rounded-xl transition-all hover:text-cyan-600 ${activeCls}`}
+      aria-label={label}
+    >
+      {label === 'cities' && (
+        <div className="w-10 h-10 flex items-center justify-center mb-1">
+          <svg className="w-full h-full object-contain" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth={1.8}>
+            <path d="M4 26H28" strokeLinecap="round" />
+            <rect x="6" y="16" width="4" height="10" rx="1" />
+            <rect x="12.5" y="11" width="5" height="15" rx="1" />
+            <rect x="20" y="14" width="6" height="12" rx="1" />
+            <path d="M14.5 14.5H15.5M14.5 17.5H15.5M21.5 17H24.5M21.5 20H24.5" strokeLinecap="round" />
+          </svg>
+        </div>
+      )}
+
+      {label === 'personal' && (
+        <div className="w-10 h-10 flex items-center justify-center mb-1">
+          <svg className="w-full h-full object-contain" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth={1.8}>
+            <circle cx="16" cy="9" r="4" />
+            <path d="M9.5 26V21.5C9.5 17.9 12.4 15 16 15C19.6 15 22.5 17.9 22.5 21.5V26" strokeLinecap="round" />
+            <path d="M12 26H20" strokeLinecap="round" />
+          </svg>
+        </div>
+      )}
+
+      {label === 'studio' && (
+        <div className="w-10 h-10 flex items-center justify-center mb-1">
+          <svg className="w-full h-full object-contain" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth={1.8}>
+            <path d="M7 22L16 17L25 22L16 27L7 22Z" />
+            <path d="M12 13L20 5L23 8L15 16L11 17L12 13Z" />
+            <path d="M20 5L23 8" strokeLinecap="round" />
+          </svg>
+        </div>
+      )}
+
+      {label === 'sports' && (
+        <div className="w-10 h-10 flex items-center justify-center mb-1">
+          <Trophy size={32} strokeWidth={1.5} />
+        </div>
+      )}
+
+      <span className="text-[11px] font-semibold tracking-wide lowercase">{label}</span>
+    </Link>
+  );
+}
 
 export function Header() {
-  const pathname = usePathname();
-  const totalItems = useCartStore((s) => s.totalItems);
+  const pathname = usePathname() || '';
+  const { totalItems } = useCart();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const logoConfig = (() => {
-    if (pathname?.includes('/personal')) {
-      return {
-        src: '/logos/logo-personal.jpeg',
-        alt: 'Modelo Personal Logo',
-      };
-    }
-
-    if (pathname?.includes('/studio')) {
-      return {
-        src: '/logos/logo-studio.jpeg',
-        alt: 'Modelo Studio Logo',
-      };
-    }
-
-    return {
-      src: '/logos/logo-main.jpeg',
-      alt: 'Modelo Main Logo',
-    };
-  })();
+  let logoSrc = '/images/logo/main.jpeg';
+  if (pathname.includes('/personal')) {
+    logoSrc = '/images/logo/personal.jpeg';
+  } else if (pathname.includes('/cities')) {
+    logoSrc = '/images/logo/cities.jpeg';
+  } else if (pathname.includes('/sport')) {
+    logoSrc = '/images/logo/sport.jpeg';
+  } else if (pathname.includes('/studio')) {
+    logoSrc = '/images/logo/studio.jpeg';
+  } else if (pathname.includes('/cart') || pathname.includes('/checkout') || pathname === '/') {
+    logoSrc = '/images/logo/main.jpeg';
+  }
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-white/85 backdrop-blur-xl border-b border-border/60">
+      <header className="relative z-50 w-full bg-white/85 backdrop-blur-xl border-b border-border/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+          <div className="h-16 grid grid-cols-[auto_1fr_auto] items-center gap-3">
             {/* Logo */}
-            <Link href="/" className="flex items-center gap-2.5 group">
+            <Link href="/" className="flex items-center gap-2.5 group justify-self-start">
               <Image
-                src={logoConfig.src}
-                alt={logoConfig.alt}
+                src={logoSrc}
+                alt="Modelo Personal Logo"
                 width={220}
                 height={68}
                 priority
@@ -50,42 +101,49 @@ export function Header() {
             </Link>
 
             {/* Desktop Nav */}
-            <nav className="hidden md:flex items-center gap-1">
-              <Link href="/" className="px-3.5 py-2 text-sm font-medium text-muted hover:text-foreground hover:bg-muted-bg rounded-xl transition-all">
-                Home
+            <nav className="hidden md:flex items-center justify-center gap-6">
+              <DepartmentLogoLink
+                href="/sports"
+                label="sports"
+                isActive={!!pathname?.includes('/sports')}
+              />
+              <DepartmentLogoLink
+                href="/cities"
+                label="cities"
+                isActive={!!pathname?.includes('/cities')}
+              />
+              <DepartmentLogoLink
+                href="/personal"
+                label="personal"
+                isActive={!!pathname?.includes('/personal')}
+              />
+              <DepartmentLogoLink
+                href="/studio"
+                label="studio"
+                isActive={!!pathname?.includes('/studio')}
+              />
+              <div className="h-8 w-px bg-slate-200" />
+              <Link href="/" className="px-2 py-1 text-sm font-semibold text-slate-700 hover:text-slate-900 transition-colors">
+                עמוד הבית
               </Link>
-              <Link href="/studio" className="px-3.5 py-2 text-sm font-medium text-muted hover:text-foreground hover:bg-muted-bg rounded-xl transition-all">
-                Studio
+              <Link href="/about" className="px-2 py-1 text-sm font-semibold text-slate-700 hover:text-slate-900 transition-colors">
+                אודות
               </Link>
-              <Link href="/personal" className="px-3.5 py-2 text-sm font-medium text-muted hover:text-foreground hover:bg-muted-bg rounded-xl transition-all">
-                Personal
-              </Link>
-              <Link href="/about" className="px-3.5 py-2 text-sm font-medium text-muted hover:text-foreground hover:bg-muted-bg rounded-xl transition-all">
-                About
-              </Link>
+              <a href="mailto:modeloo.info@gmail.com" className="px-2 py-1 text-sm font-semibold text-slate-700 hover:text-slate-900 transition-colors">
+                צור קשר
+              </a>
             </nav>
 
             {/* Actions */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 justify-self-end">
               <Link
-                href="/studio/search"
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-xl text-muted hover:text-foreground hover:bg-muted-bg transition-all"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                </svg>
-                <span>Search models</span>
-              </Link>
-              <Link
-                href="/studio/cart"
+                href="/cart"
                 className="relative flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium rounded-xl hover:bg-muted-bg transition-all group"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-muted group-hover:text-foreground transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-                </svg>
+                <ShoppingBag className="w-5 h-5 text-muted group-hover:text-foreground transition-colors" strokeWidth={1.8} />
                 <span className="hidden sm:inline text-muted group-hover:text-foreground transition-colors">סל</span>
                 {totalItems > 0 && (
-                  <span className="absolute -top-0.5 -start-0.5 bg-primary text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm">
+                  <span className="absolute -top-0.5 -start-0.5 bg-black text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm">
                     {totalItems}
                   </span>
                 )}
@@ -124,50 +182,52 @@ export function Header() {
                   onClick={() => setMobileOpen(false)}
                   className="flex items-center justify-center px-3 py-2 rounded-xl text-foreground bg-muted-bg text-sm font-medium"
                 >
-                  Home
+                  בית
                 </Link>
                 <Link
                   href="/studio"
                   onClick={() => setMobileOpen(false)}
                   className="flex items-center justify-center px-3 py-2 rounded-xl text-foreground bg-primary/10 text-sm font-medium"
                 >
-                  Studio
+                  מודלו סטודיו
                 </Link>
                 <Link
                   href="/personal"
                   onClick={() => setMobileOpen(false)}
                   className="flex items-center justify-center px-3 py-2 rounded-xl text-foreground bg-muted-bg text-sm font-medium"
                 >
-                  Personal
+                  מודלו פרסונל
                 </Link>
                 <Link
                   href="/about"
                   onClick={() => setMobileOpen(false)}
                   className="flex items-center justify-center px-3 py-2 rounded-xl text-foreground bg-muted-bg text-sm font-medium"
                 >
-                  About
+                  אודות
+                </Link>
+                <Link
+                  href="/sports"
+                  onClick={() => setMobileOpen(false)}
+                  className="col-span-2 flex items-center justify-center px-3 py-2 rounded-xl text-foreground bg-muted-bg text-sm font-medium"
+                >
+                  מודלו ספורטס
+                </Link>
+                <Link
+                  href="/cities"
+                  onClick={() => setMobileOpen(false)}
+                  className="col-span-2 flex items-center justify-center px-3 py-2 rounded-xl text-foreground bg-muted-bg text-sm font-medium"
+                >
+                  מודלו סיטיז
                 </Link>
               </div>
               <Link
-                href="/studio/search"
+                href="/cart"
                 onClick={() => setMobileOpen(false)}
                 className="flex items-center gap-3 px-4 py-3 rounded-xl text-foreground hover:bg-muted-bg transition-colors"
               >
-                <svg className="w-5 h-5 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                </svg>
-                <span className="font-medium">חיפוש מודלים</span>
-              </Link>
-              <Link
-                href="/studio/cart"
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-foreground hover:bg-muted-bg transition-colors"
-              >
-                <svg className="w-5 h-5 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-                </svg>
+                <ShoppingBag className="w-5 h-5 text-muted" strokeWidth={1.8} />
                 <span className="font-medium">סל קניות</span>
-                {totalItems > 0 && <span className="text-xs bg-primary text-white px-2 py-0.5 rounded-full">{totalItems}</span>}
+                {totalItems > 0 && <span className="text-xs bg-black text-white px-2 py-0.5 rounded-full">{totalItems}</span>}
               </Link>
               <Link
                 href="/studio/order/track"

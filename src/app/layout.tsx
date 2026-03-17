@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from 'next';
 import { Heebo } from 'next/font/google';
 import './globals.css';
+import { CartProvider } from '@/context/CartContext';
+import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
 
 const heebo = Heebo({
   variable: '--font-heebo',
@@ -41,7 +44,13 @@ export default function RootLayout({
   return (
     <html lang="he" dir="rtl">
       <body className={`${heebo.variable} font-sans antialiased`}>
-        {children}
+        <CartProvider>
+          <div className="flex min-h-screen flex-col bg-background text-foreground">
+            <Header />
+            <main className="flex-1">{children}</main>
+            <Footer />
+          </div>
+        </CartProvider>
       </body>
     </html>
   );
