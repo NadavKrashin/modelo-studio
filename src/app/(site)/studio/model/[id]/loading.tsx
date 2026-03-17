@@ -1,6 +1,6 @@
-import { ModelPageSkeleton } from '@/components/ui/Skeletons';
+import { ModelDetailSkeleton } from '@/components/ui/Skeletons';
 
 export default function ModelLoading() {
-  return <ModelPageSkeleton />;
+  return <ModelDetailSkeleton />;
 }
 

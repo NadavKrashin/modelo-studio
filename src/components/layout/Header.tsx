@@ -129,9 +129,9 @@ export function Header() {
               <Link href="/about" className="px-2 py-1 text-sm font-semibold text-slate-700 hover:text-slate-900 transition-colors">
                 אודות
               </Link>
-              <a href="mailto:modeloo.info@gmail.com" className="px-2 py-1 text-sm font-semibold text-slate-700 hover:text-slate-900 transition-colors">
+              <Link href="/contact" className="px-2 py-1 text-sm font-semibold text-slate-700 hover:text-slate-900 transition-colors">
                 צור קשר
-              </a>
+              </Link>
             </nav>
 
             {/* Actions */}
