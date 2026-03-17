@@ -1,5 +1,5 @@
 import React from 'react';
-import { Phone, Mail, MapPin, MessageCircle } from 'lucide-react';
+import { Phone, Mail, MessageCircle } from 'lucide-react';
 
 export default function ContactPage() {
   return (
@@ -32,12 +32,6 @@ export default function ContactPage() {
               <span className="text-xl font-medium">modeloo.info@gmail.com</span>
             </div>
 
-            <div className="flex items-center gap-4 text-slate-700">
-              <div className="bg-slate-100 p-3 rounded-full text-black">
-                <MapPin size={24} strokeWidth={1.5} />
-              </div>
-              <span className="text-xl font-medium">יונה וולך 18, הוד השרון</span>
-            </div>
           </div>
 
           {/* WhatsApp Button */}

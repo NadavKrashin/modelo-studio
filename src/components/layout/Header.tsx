@@ -4,66 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { ShoppingBag, Trophy } from 'lucide-react';
+import { ShoppingBag } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
-
-interface DepartmentLogoLinkProps {
-  href: string;
-  label: 'cities' | 'personal' | 'studio' | 'sports';
-  isActive: boolean;
-}
-
-function DepartmentLogoLink({ href, label, isActive }: DepartmentLogoLinkProps) {
-  const activeCls = isActive ? 'text-cyan-600' : 'text-slate-600';
-
-  return (
-    <Link
-      href={href}
-      className={`group inline-flex flex-col items-center justify-center gap-1 px-2 py-1 rounded-xl transition-all hover:text-cyan-600 ${activeCls}`}
-      aria-label={label}
-    >
-      {label === 'cities' && (
-        <div className="w-10 h-10 flex items-center justify-center mb-1">
-          <svg className="w-full h-full object-contain" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth={1.8}>
-            <path d="M4 26H28" strokeLinecap="round" />
-            <rect x="6" y="16" width="4" height="10" rx="1" />
-            <rect x="12.5" y="11" width="5" height="15" rx="1" />
-            <rect x="20" y="14" width="6" height="12" rx="1" />
-            <path d="M14.5 14.5H15.5M14.5 17.5H15.5M21.5 17H24.5M21.5 20H24.5" strokeLinecap="round" />
-          </svg>
-        </div>
-      )}
-
-      {label === 'personal' && (
-        <div className="w-10 h-10 flex items-center justify-center mb-1">
-          <svg className="w-full h-full object-contain" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth={1.8}>
-            <circle cx="16" cy="9" r="4" />
-            <path d="M9.5 26V21.5C9.5 17.9 12.4 15 16 15C19.6 15 22.5 17.9 22.5 21.5V26" strokeLinecap="round" />
-            <path d="M12 26H20" strokeLinecap="round" />
-          </svg>
-        </div>
-      )}
-
-      {label === 'studio' && (
-        <div className="w-10 h-10 flex items-center justify-center mb-1">
-          <svg className="w-full h-full object-contain" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth={1.8}>
-            <path d="M7 22L16 17L25 22L16 27L7 22Z" />
-            <path d="M12 13L20 5L23 8L15 16L11 17L12 13Z" />
-            <path d="M20 5L23 8" strokeLinecap="round" />
-          </svg>
-        </div>
-      )}
-
-      {label === 'sports' && (
-        <div className="w-10 h-10 flex items-center justify-center mb-1">
-          <Trophy size={32} strokeWidth={1.5} />
-        </div>
-      )}
-
-      <span className="text-[11px] font-semibold tracking-wide lowercase">{label}</span>
-    </Link>
-  );
-}
 
 export function Header() {
   const pathname = usePathname() || '';
@@ -83,59 +25,69 @@ export function Header() {
     logoSrc = '/images/logo/main.jpeg';
   }
 
+  const departmentLinkClass = (isActive: boolean) =>
+    isActive
+      ? 'text-black font-extrabold text-lg'
+      : 'text-slate-500 hover:text-black font-medium text-lg transition-colors';
+
   return (
     <>
-      <header className="relative z-50 w-full bg-white/85 backdrop-blur-xl border-b border-border/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="h-16 grid grid-cols-[auto_1fr_auto] items-center gap-3">
-            {/* Logo */}
-            <Link href="/" className="flex items-center gap-2.5 group justify-self-start">
-              <Image
-                src={logoSrc}
-                alt="Modelo Personal Logo"
-                width={220}
-                height={68}
-                priority
-                className="h-10 sm:h-12 w-auto object-contain"
-              />
-            </Link>
+      <header className="relative z-50 w-full bg-white border-b border-border/60" dir="rtl">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="relative h-24 flex justify-between items-center w-full">
+            {/* Right: Logo */}
+            <div className="hidden md:flex min-w-[220px] justify-end">
+              <Link href="/" className="flex items-center group">
+                <Image
+                  src={logoSrc}
+                  alt="Modelo Logo"
+                  width={240}
+                  height={76}
+                  priority
+                  className="h-12 w-auto object-contain"
+                />
+              </Link>
+            </div>
 
-            {/* Desktop Nav */}
-            <nav className="hidden md:flex items-center justify-center gap-6">
-              <DepartmentLogoLink
-                href="/sports"
-                label="sports"
-                isActive={!!pathname?.includes('/sports')}
-              />
-              <DepartmentLogoLink
-                href="/cities"
-                label="cities"
-                isActive={!!pathname?.includes('/cities')}
-              />
-              <DepartmentLogoLink
-                href="/personal"
-                label="personal"
-                isActive={!!pathname?.includes('/personal')}
-              />
-              <DepartmentLogoLink
+            {/* Center: Department text navigation */}
+            <nav className="hidden md:flex items-center gap-10 absolute left-1/2 -translate-x-1/2">
+              <Link
                 href="/studio"
-                label="studio"
-                isActive={!!pathname?.includes('/studio')}
-              />
-              <div className="h-8 w-px bg-slate-200" />
-              <Link href="/" className="px-2 py-1 text-sm font-semibold text-slate-700 hover:text-slate-900 transition-colors">
-                עמוד הבית
+                className={departmentLinkClass(pathname.includes('/studio'))}
+              >
+                סטודיו
               </Link>
-              <Link href="/about" className="px-2 py-1 text-sm font-semibold text-slate-700 hover:text-slate-900 transition-colors">
-                אודות
+              <Link
+                href="/personal"
+                className={departmentLinkClass(pathname.includes('/personal'))}
+              >
+                פרסונל
               </Link>
-              <Link href="/contact" className="px-2 py-1 text-sm font-semibold text-slate-700 hover:text-slate-900 transition-colors">
-                צור קשר
+              <Link
+                href="/cities"
+                className={departmentLinkClass(pathname.includes('/cities'))}
+              >
+                סיטיז
+              </Link>
+              <Link
+                href="/sport"
+                className={departmentLinkClass(pathname.includes('/sport'))}
+              >
+                ספורט
               </Link>
             </nav>
 
-            {/* Actions */}
-            <div className="flex items-center gap-2 justify-self-end">
+            {/* Left: utility links + cart */}
+            <div className="hidden md:flex items-center gap-6 min-w-[340px] justify-start">
+              <Link href="/" className="text-sm font-medium text-slate-500 hover:text-black transition-colors">
+                עמוד הבית
+              </Link>
+              <Link href="/about" className="text-sm font-medium text-slate-500 hover:text-black transition-colors">
+                אודות
+              </Link>
+              <Link href="/contact" className="text-sm font-medium text-slate-500 hover:text-black transition-colors">
+                צור קשר
+              </Link>
               <Link
                 href="/cart"
                 className="relative flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium rounded-xl hover:bg-muted-bg transition-all group"
@@ -148,7 +100,38 @@ export function Header() {
                   </span>
                 )}
               </Link>
+            </div>
 
+            {/* Mobile: logo + menu/cart */}
+            <div className="md:hidden flex w-full items-center justify-between">
+              <Link href="/" className="flex items-center group">
+                <Image
+                  src={logoSrc}
+                  alt="Modelo Logo"
+                  width={180}
+                  height={56}
+                  priority
+                  className="h-10 w-auto object-contain"
+                />
+              </Link>
+
+              <div className="flex items-center gap-1">
+                <Link
+                  href="/cart"
+                  className="relative flex items-center justify-center w-10 h-10 rounded-xl hover:bg-muted-bg transition-all"
+                  aria-label="סל קניות"
+                >
+                  <ShoppingBag className="w-5 h-5 text-muted" strokeWidth={1.8} />
+                  {totalItems > 0 && (
+                    <span className="absolute -top-0.5 -start-0.5 bg-black text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm">
+                      {totalItems}
+                    </span>
+                  )}
+                </Link>
+              </div>
+            </div>
+
+            <div className="md:hidden absolute left-0">
               {/* Mobile Menu Button */}
               <button
                 onClick={() => setMobileOpen(!mobileOpen)}
@@ -206,7 +189,14 @@ export function Header() {
                   אודות
                 </Link>
                 <Link
-                  href="/sports"
+                  href="/contact"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center justify-center px-3 py-2 rounded-xl text-foreground bg-muted-bg text-sm font-medium"
+                >
+                  צור קשר
+                </Link>
+                <Link
+                  href="/sport"
                   onClick={() => setMobileOpen(false)}
                   className="col-span-2 flex items-center justify-center px-3 py-2 rounded-xl text-foreground bg-muted-bg text-sm font-medium"
                 >

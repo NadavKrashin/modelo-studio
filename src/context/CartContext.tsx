@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useMemo, useState } from "react";
 
-export type CartDepartment = "cities" | "personal" | "studio";
+export type CartDepartment = "cities" | "personal" | "studio" | "sport";
 
 export type CartItem = {
   id: string;
