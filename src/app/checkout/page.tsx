@@ -1,157 +1,230 @@
-"use client";
+'use client';
 
-import Image from "next/image";
-import Link from "next/link";
-import { useState } from "react";
-import { useCart } from "@/context/CartContext";
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useCartStore } from '@/lib/store';
+import { formatPrice } from '@/lib/pricing';
+import type { CartItem, DeliveryMethod, FilamentOption } from '@/lib/types';
+import { DELIVERY_METHOD_LABELS } from '@/lib/types/order';
 
 export default function CheckoutPage() {
-  const { items } = useCart();
-  const [shippingMethod, setShippingMethod] = useState<"delivery" | "pickup">("delivery");
+  const router = useRouter();
+  const { items, subtotal, totalItems } = useCartStore();
+  const clearCart = useCartStore((s) => s.clearCart);
 
-  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const shippingCost = shippingMethod === "delivery" ? 39 : 0;
-  const finalTotal = subtotal + shippingCost;
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [city, setCity] = useState('');
+  const [address, setAddress] = useState('');
+  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>('shipping');
+  const [customerNotes, setCustomerNotes] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [availableFilaments, setAvailableFilaments] = useState<FilamentOption[]>([]);
 
-  const inputClass =
-    "border border-gray-300 rounded-md p-3 w-full mb-4 outline-none transition-all focus:ring-2 focus:ring-black";
+  const needsFilaments = useMemo(
+    () => items.some((i) => i.kind === 'studio_model'),
+    [items],
+  );
+
+  useEffect(() => {
+    if (!needsFilaments) return;
+    fetch('/api/filaments')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: FilamentOption[]) => setAvailableFilaments(Array.isArray(data) ? data : []))
+      .catch(() => setAvailableFilaments([]));
+  }, [needsFilaments]);
+
+  const getFilamentName = (filamentId: string) =>
+    availableFilaments.find((f) => f.id === filamentId)?.localizedName;
+
+  if (items.length === 0) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center animate-fade-in">
+        <p className="text-muted mb-4">הסל ריק</p>
+        <Link href="/" className="text-primary font-semibold hover:underline">
+          חזרה לעמוד הבית
+        </Link>
+      </div>
+    );
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer: { fullName, email, phone, city, address },
+          items,
+          deliveryMethod,
+          notes: customerNotes,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.details?.[0]?.message ?? err.error ?? 'שגיאה ביצירת ההזמנה');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const confirmation = await res.json();
+      clearCart();
+      router.push(`/studio/order/confirmation?orderNumber=${confirmation.orderNumber}`);
+    } catch {
+      alert('שגיאה בשליחת ההזמנה. נסו שוב.');
+      setIsSubmitting(false);
+    }
+  };
+
+  const inputCls =
+    'w-full px-4 py-3 rounded-xl border border-border bg-white text-foreground placeholder-gray-400 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-all';
 
   return (
-    <div className="min-h-screen bg-white text-slate-900" dir="rtl">
-      <header className="border-b border-gray-200 py-6">
-        <div className="max-w-7xl mx-auto px-4 flex items-center justify-center">
-          <Link href="/" aria-label="חזרה לדף הבית">
-            <Image
-              src="/images/logo/logo-main.jpeg"
-              alt="Modelo"
-              width={260}
-              height={80}
-              className="w-48 md:w-64 h-auto object-contain"
-              priority
-            />
-          </Link>
-        </div>
-      </header>
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
+      <div className="flex items-center justify-center gap-2 text-xs text-muted mb-8">
+        <Link href="/cart" className="text-primary font-medium">
+          סל
+        </Link>
+        <svg className="w-3 h-3 rotate-180 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+        </svg>
+        <span className="text-foreground font-bold">תשלום</span>
+      </div>
 
-      <main className="grid grid-cols-1 lg:grid-cols-12 max-w-7xl mx-auto">
-        <section className="lg:col-span-7 bg-white p-6 sm:p-8 lg:p-12">
-          <div className="max-w-2xl">
-            <h2 className="text-xl font-bold mb-4">פרטי קשר</h2>
-            <input type="email" placeholder="כתובת אימייל" className={inputClass} />
-            <input
-              type="tel"
-              dir="rtl"
-              placeholder="מספר טלפון"
-              className={`${inputClass} text-right`}
-            />
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+        <form id="checkout-form" onSubmit={handleSubmit} className="lg:col-span-3 space-y-7">
+          <h1 className="text-2xl font-extrabold text-foreground">השלמת הזמנה</h1>
 
-            <h2 className="text-xl font-bold mb-4 mt-8">כתובת למשלוח</h2>
+          <section className="bg-white rounded-2xl border border-border/80 p-5 md:p-6">
+            <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
+              <span className="w-6 h-6 bg-primary text-white text-[11px] font-bold rounded-lg flex items-center justify-center">
+                1
+              </span>
+              פרטי התקשרות
+            </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input type="text" placeholder="שם פרטי" className={inputClass} />
-              <input type="text" placeholder="שם משפחה" className={inputClass} />
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1.5">שם מלא *</label>
+                <input type="text" required value={fullName} onChange={(e) => setFullName(e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1.5">אימייל *</label>
+                <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1.5">טלפון *</label>
+                <input type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} />
+              </div>
             </div>
-            <input type="text" placeholder="חברה (אופציונלי)" className={inputClass} />
-            <input type="text" placeholder="כתובת" className={inputClass} />
-            <input type="text" placeholder="עיר" className={inputClass} />
+          </section>
 
-            <h2 className="text-xl font-bold mb-4 mt-8">שיטת משלוח</h2>
-            <div className="border border-gray-300 rounded-lg p-4 mb-6">
-              <label className="flex items-center justify-between py-2 cursor-pointer">
-                <div className="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    name="shipping-method"
-                    checked={shippingMethod === "delivery"}
-                    onChange={() => setShippingMethod("delivery")}
-                    className="accent-black"
-                  />
-                  <span>משלוח עד הבית (עד 10 ימי עסקים)</span>
-                </div>
-                <span>₪39.00</span>
-              </label>
-              <label className="flex items-center justify-between py-2 cursor-pointer">
-                <div className="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    name="shipping-method"
-                    checked={shippingMethod === "pickup"}
-                    onChange={() => setShippingMethod("pickup")}
-                    className="accent-black"
-                  />
-                  <span>איסוף עצמי (חינם)</span>
-                </div>
-                <span>₪0.00</span>
-              </label>
+          <section className="bg-white rounded-2xl border border-border/80 p-5 md:p-6">
+            <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
+              <span className="w-6 h-6 bg-primary text-white text-[11px] font-bold rounded-lg flex items-center justify-center">
+                2
+              </span>
+              משלוח
+            </h2>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              {(['shipping', 'pickup'] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setDeliveryMethod(m)}
+                  className={`rounded-xl border px-4 py-3 text-sm font-semibold transition-all ${
+                    deliveryMethod === m ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-muted-bg'
+                  }`}
+                >
+                  {DELIVERY_METHOD_LABELS[m]}
+                </button>
+              ))}
             </div>
-
-            <h2 className="text-xl font-bold mb-1">תשלום</h2>
-            <p className="text-sm text-slate-600 mb-4">כל התשלומים מאובטחים ומוצפנים.</p>
-
-            <div className="grid grid-cols-2 gap-3 mb-5">
-              <button className="bg-black text-white rounded-md py-3 font-semibold hover:bg-slate-800 transition-all">
-                Apple Pay
-              </button>
-              <button className="bg-white text-black border border-black rounded-md py-3 font-semibold hover:bg-gray-50 transition-all">
-                Google Pay
-              </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1.5">עיר</label>
+                <input value={city} onChange={(e) => setCity(e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1.5">כתובת</label>
+                <input value={address} onChange={(e) => setAddress(e.target.value)} className={inputCls} />
+              </div>
             </div>
-
-            <div className="flex items-center gap-3 my-5">
-              <div className="h-px bg-gray-300 flex-1" />
-              <span className="text-sm text-gray-500">או שלמו באשראי</span>
-              <div className="h-px bg-gray-300 flex-1" />
+            <div className="mt-4">
+              <label className="block text-xs font-semibold text-foreground mb-1.5">הערות</label>
+              <textarea value={customerNotes} onChange={(e) => setCustomerNotes(e.target.value)} className={`${inputCls} min-h-[90px]`} />
             </div>
+          </section>
+        </form>
 
-            <input type="text" placeholder="מספר כרטיס" className={inputClass} />
-            <div className="grid grid-cols-2 gap-4">
-              <input type="text" placeholder="תוקף (MM/YY)" className={inputClass} />
-              <input type="text" placeholder="CVV" className={inputClass} />
-            </div>
-            <input type="text" placeholder="שם בעל הכרטיס" className={inputClass} />
-
-            <button className="bg-black text-white py-4 rounded-lg font-bold text-lg mt-8 w-full hover:bg-slate-800 transition-all">
-              שלם עכשיו ₪{finalTotal}
-            </button>
-          </div>
-        </section>
-
-        <aside className="lg:col-span-5 bg-gray-50 lg:border-r border-gray-200 sticky top-0 h-screen overflow-y-auto p-6 sm:p-8">
-          <h3 className="text-xl font-bold mb-6">סיכום הזמנה</h3>
-
-          <div className="space-y-5">
-            {items.map((item) => (
-              <article key={item.id} className="flex items-start justify-between gap-3">
-                <div className="flex items-start gap-3 min-w-0">
-                  <div className="relative w-16 h-16 border rounded-md bg-white overflow-hidden shrink-0">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={item.image} alt={item.name} className="w-full h-full object-contain" />
-                    <span className="absolute -top-2 -right-2 bg-black text-white text-[10px] min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1">
-                      {item.quantity}
+        <aside className="lg:col-span-2">
+          <div className="sticky top-24 space-y-4">
+            <div className="bg-white rounded-2xl border border-border/80 p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-bold text-foreground">סיכום</h2>
+                <span className="text-xs text-muted">{totalItems} פריטים</span>
+              </div>
+              <div className="space-y-3 mb-4">
+                {items.map((item: CartItem) => (
+                  <div key={item.id} className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-muted-bg overflow-hidden shrink-0 flex items-center justify-center">
+                      {(item.kind === 'studio_model' ? item.thumbnailUrl : item.imageUrl) ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={item.kind === 'studio_model' ? item.thumbnailUrl : item.imageUrl}
+                          alt={item.kind === 'studio_model' ? item.localizedModelName : item.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-xs text-muted">—</span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {item.kind === 'studio_model' ? item.localizedModelName : item.title}
+                      </p>
+                      <p className="text-[11px] text-muted">
+                        כמות: {item.quantity}
+                        {item.kind === 'studio_model' ? ` • ${getFilamentName(item.customization.filamentId) ?? ''}` : ''}
+                      </p>
+                    </div>
+                    <span className="text-sm font-bold text-foreground shrink-0">
+                      {formatPrice(item.subtotal)}
                     </span>
                   </div>
-                  <p className="text-sm text-slate-900 leading-relaxed">{item.name}</p>
-                </div>
-                <span className="text-sm font-semibold shrink-0">₪{item.price * item.quantity}</span>
-              </article>
-            ))}
-          </div>
+                ))}
+              </div>
+              <div className="border-t border-border pt-3 flex justify-between items-baseline">
+                <span className="font-bold text-foreground">סה&quot;כ</span>
+                <span className="text-xl font-extrabold text-primary">{formatPrice(subtotal)}</span>
+              </div>
+              <p className="text-[10px] text-muted mt-1">לפני משלוח</p>
+            </div>
 
-          <div className="mt-8 border-t border-gray-200 pt-5 space-y-3">
-            <div className="flex items-center justify-between text-slate-700">
-              <span>סכום ביניים</span>
-              <span>₪{subtotal}</span>
-            </div>
-            <div className="flex items-center justify-between text-slate-700">
-              <span>משלוח</span>
-              <span>{shippingMethod === "delivery" ? "₪39.00" : "חינם"}</span>
-            </div>
-            <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-              <span className="font-semibold">סה״כ</span>
-              <span className="text-2xl font-bold">₪{finalTotal}</span>
-            </div>
+            <button
+              type="submit"
+              form="checkout-form"
+              disabled={isSubmitting}
+              className="w-full flex items-center justify-center bg-primary hover:bg-primary-hover disabled:opacity-60 text-white py-4 rounded-2xl font-bold text-[17px] transition-all shadow-xl shadow-primary/25"
+            >
+              {isSubmitting ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  שולח...
+                </span>
+              ) : (
+                `אישור הזמנה — ${formatPrice(subtotal)}`
+              )}
+            </button>
           </div>
         </aside>
-      </main>
+      </div>
     </div>
   );
 }
+

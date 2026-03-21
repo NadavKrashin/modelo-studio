@@ -4,12 +4,70 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { ShoppingBag } from 'lucide-react';
-import { useCart } from '@/context/CartContext';
+import { ShoppingBag, Trophy } from 'lucide-react';
+import { useCartStore } from '@/lib/store';
+
+interface DepartmentLogoLinkProps {
+  href: string;
+  label: 'cities' | 'personal' | 'studio' | 'sports';
+  isActive: boolean;
+}
+
+function DepartmentLogoLink({ href, label, isActive }: DepartmentLogoLinkProps) {
+  const activeCls = isActive ? 'text-cyan-600' : 'text-slate-600';
+
+  return (
+    <Link
+      href={href}
+      className={`group inline-flex flex-col items-center justify-center gap-1 px-2 py-1 rounded-xl transition-all hover:text-cyan-600 ${activeCls}`}
+      aria-label={label}
+    >
+      {label === 'cities' && (
+        <div className="w-10 h-10 flex items-center justify-center mb-1">
+          <svg className="w-full h-full object-contain" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth={1.8}>
+            <path d="M4 26H28" strokeLinecap="round" />
+            <rect x="6" y="16" width="4" height="10" rx="1" />
+            <rect x="12.5" y="11" width="5" height="15" rx="1" />
+            <rect x="20" y="14" width="6" height="12" rx="1" />
+            <path d="M14.5 14.5H15.5M14.5 17.5H15.5M21.5 17H24.5M21.5 20H24.5" strokeLinecap="round" />
+          </svg>
+        </div>
+      )}
+
+      {label === 'personal' && (
+        <div className="w-10 h-10 flex items-center justify-center mb-1">
+          <svg className="w-full h-full object-contain" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth={1.8}>
+            <circle cx="16" cy="9" r="4" />
+            <path d="M9.5 26V21.5C9.5 17.9 12.4 15 16 15C19.6 15 22.5 17.9 22.5 21.5V26" strokeLinecap="round" />
+            <path d="M12 26H20" strokeLinecap="round" />
+          </svg>
+        </div>
+      )}
+
+      {label === 'studio' && (
+        <div className="w-10 h-10 flex items-center justify-center mb-1">
+          <svg className="w-full h-full object-contain" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth={1.8}>
+            <path d="M7 22L16 17L25 22L16 27L7 22Z" />
+            <path d="M12 13L20 5L23 8L15 16L11 17L12 13Z" />
+            <path d="M20 5L23 8" strokeLinecap="round" />
+          </svg>
+        </div>
+      )}
+
+      {label === 'sports' && (
+        <div className="w-10 h-10 flex items-center justify-center mb-1">
+          <Trophy size={32} strokeWidth={1.5} />
+        </div>
+      )}
+
+      <span className="text-[11px] font-semibold tracking-wide lowercase">{label}</span>
+    </Link>
+  );
+}
 
 export function Header() {
   const pathname = usePathname() || '';
-  const { totalItems } = useCart();
+  const totalItems = useCartStore((s) => s.totalItems);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   let logoSrc = '/images/logo/main.jpeg';

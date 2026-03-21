@@ -92,6 +92,7 @@ export function ModelCustomizationPanel({ model, filaments }: Props) {
 
   const handleAddToCart = () => {
     addItem({
+      kind: 'studio_model',
       modelId: model.id,
       modelName: model.localizedName,
       localizedModelName: model.localizedName,
