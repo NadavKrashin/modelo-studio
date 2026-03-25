@@ -2,47 +2,37 @@
 
 import Image from "next/image";
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useCartStore } from "@/lib/store";
 
 const PRICE = 89;
-const COLOR_OPTIONS = ["שחור", "לבן"] as const;
+const COLOR_OPTIONS = [
+  { name: "שחור", swatchCls: "bg-black" },
+  { name: "לבן", swatchCls: "bg-white border border-gray-200" },
+  { name: "בז'", swatchCls: "bg-stone-200" },
+  { name: "אפור", swatchCls: "bg-gray-500" },
+  { name: "כחול", swatchCls: "bg-blue-900" },
+  { name: "אדום", swatchCls: "bg-red-800" },
+] as const;
 
 export default function SportMedalPage() {
-  const router = useRouter();
   const addItem = useCartStore((s) => s.addItem);
+  const openCart = useCartStore((s) => s.openCart);
 
   const [step, setStep] = useState(0);
   const [color, setColor] = useState("");
-  const [isCustomColor, setIsCustomColor] = useState(false);
-  const [customColor, setCustomColor] = useState("");
 
   const totalSteps = 2;
   const progress = ((step + 1) / totalSteps) * 100;
 
-  const selectedColor = isCustomColor ? customColor : color;
-
   const canGoNext = useMemo(() => {
     if (step === 0) {
-      if (isCustomColor) return customColor.trim().length > 0;
       return color.length > 0;
     }
     return true;
-  }, [step, color, isCustomColor, customColor]);
+  }, [step, color]);
 
   const goNext = () => { if (canGoNext && step < totalSteps - 1) setStep((p) => p + 1); };
   const goBack = () => { if (step > 0) setStep((p) => p - 1); };
-
-  const handleSelectColor = (c: string) => {
-    setColor(c);
-    setIsCustomColor(false);
-    setCustomColor("");
-  };
-
-  const handleSelectCustom = () => {
-    setColor("");
-    setIsCustomColor(true);
-  };
 
   const handleAddToCart = () => {
     addItem({
@@ -51,19 +41,14 @@ export default function SportMedalPage() {
       imageUrl: "/images/sport/medal.jpeg",
       department: "sport",
       attributes: [
-        `צבע: ${isCustomColor ? `אחר — ${customColor}` : color}`,
+        `צבע: ${color}`,
       ],
       quantity: 1,
       unitPrice: PRICE,
       subtotal: PRICE,
     });
-    router.push("/cart");
+    openCart();
   };
-
-  const cardCls = (active: boolean) =>
-    active
-      ? "border-black bg-black text-white shadow-lg"
-      : "border-slate-200 bg-white hover:border-slate-300";
 
   return (
     <div className="bg-white min-h-screen" dir="rtl">
@@ -73,6 +58,9 @@ export default function SportMedalPage() {
           <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 mb-4">
             התאימו אישית — משושה מדליה
           </h1>
+          <div className="mb-6 text-slate-500 text-sm font-medium">
+            קוטר 12 ס״מ
+          </div>
           <div className="aspect-square overflow-hidden rounded-2xl border border-slate-200 bg-white relative">
             <Image src="/images/sport/medal.jpeg" alt="משושה מדליה" fill className="object-cover" />
           </div>
@@ -102,44 +90,33 @@ export default function SportMedalPage() {
                 <h2 className="text-2xl font-bold text-slate-900 mb-2">בחירת צבע</h2>
                 <p className="text-slate-600 mb-6">בחרו את הצבע למשושה המדליה שלכם.</p>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {COLOR_OPTIONS.map((c) => (
+                <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
+                  {COLOR_OPTIONS.map((c) => {
+                    const active = color === c.name;
+                    return (
                     <button
-                      key={c}
-                      onClick={() => handleSelectColor(c)}
-                      className={`rounded-2xl border-2 p-5 text-right transition-all ${cardCls(!isCustomColor && color === c)}`}
+                      key={c.name}
+                      type="button"
+                      onClick={() => setColor(c.name)}
+                      className={`rounded-2xl border border-slate-200 bg-white p-4 text-center transition-all hover:border-slate-300 ${active ? "border-black" : ""}`}
                     >
-                      <div className="flex items-center gap-3">
-                        <span className={`w-6 h-6 rounded-full border ${c === "שחור" ? "bg-black border-transparent" : "bg-white border-slate-300"}`} />
-                        <span className="font-bold">{c}</span>
+                      <div className="flex flex-col items-center">
+                        <span
+                          className={[
+                            "w-12 h-12 rounded-full cursor-pointer flex-shrink-0 mx-auto transition-shadow",
+                            c.swatchCls,
+                            active ? "ring-2 ring-offset-2 ring-offset-white ring-black" : "",
+                          ].join(" ")}
+                          aria-label={c.name}
+                        />
+                        <span className="mt-3 font-bold text-sm text-slate-900">
+                          {c.name}
+                        </span>
                       </div>
                     </button>
-                  ))}
-
-                  <button
-                    onClick={handleSelectCustom}
-                    className={`rounded-2xl border-2 p-5 text-right transition-all ${cardCls(isCustomColor)}`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-full border border-dashed border-slate-400 bg-gradient-to-br from-rose-200 via-blue-200 to-emerald-200" />
-                      <span className="font-bold">אחר</span>
-                    </div>
-                  </button>
+                    );
+                  })}
                 </div>
-
-                {isCustomColor && (
-                  <div className="mt-5">
-                    <input
-                      type="text"
-                      value={customColor}
-                      onChange={(e) => setCustomColor(e.target.value.slice(0, 20))}
-                      maxLength={20}
-                      placeholder="תארו את הצבע הרצוי (עד 20 תווים)"
-                      className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black/10 focus:border-black transition-all"
-                    />
-                    <p className="mt-1 text-xs text-slate-400 text-left" dir="ltr">{customColor.length}/20</p>
-                  </div>
-                )}
               </div>
             )}
 
@@ -151,7 +128,7 @@ export default function SportMedalPage() {
 
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-3 text-sm">
                   <Row label="מוצר" value="משושה מדליה" />
-                  <Row label="צבע" value={isCustomColor ? `אחר — ${customColor}` : color} />
+                  <Row label="צבע" value={color} />
                   <div className="border-t border-slate-200 pt-3 flex justify-between gap-4">
                     <span className="font-bold text-slate-900">סה&quot;כ</span>
                     <span className="text-xl font-extrabold text-black">₪{PRICE}</span>

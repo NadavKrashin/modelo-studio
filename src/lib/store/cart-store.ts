@@ -6,6 +6,9 @@ import type { Cart, CartItem } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 
 interface CartStore extends Cart {
+  isCartOpen: boolean;
+  openCart: () => void;
+  closeCart: () => void;
   addItem: (item: Omit<CartItem, 'id' | 'addedAt'>) => void;
   removeItem: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
@@ -26,6 +29,10 @@ export const useCartStore = create<CartStore>()(
       totalItems: 0,
       subtotal: 0,
       updatedAt: new Date().toISOString(),
+
+      isCartOpen: false,
+      openCart: () => set({ isCartOpen: true }),
+      closeCart: () => set({ isCartOpen: false }),
 
       addItem: (item) =>
         set((state) => {
@@ -76,6 +83,12 @@ export const useCartStore = create<CartStore>()(
     }),
     {
       name: 'modelo-cart',
+      partialize: (state) => ({
+        items: state.items,
+        totalItems: state.totalItems,
+        subtotal: state.subtotal,
+        updatedAt: state.updatedAt,
+      }),
     }
   )
 );

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useCartStore } from "@/lib/store";
 
 type ModelType = "person" | "animal";
@@ -41,8 +40,8 @@ const INITIAL: WizardState = {
 };
 
 export default function PersonalWizardPage() {
-  const router = useRouter();
   const addItem = useCartStore((s) => s.addItem);
+  const openCart = useCartStore((s) => s.openCart);
 
   const [ws, setWs] = useState<WizardState>(INITIAL);
   const [step, setStep] = useState(0);
@@ -131,7 +130,7 @@ export default function PersonalWizardPage() {
       unitPrice: totalPrice || 199,
       subtotal: totalPrice || 199,
     });
-    router.push("/cart");
+    openCart();
   };
 
   const cardCls = (active: boolean) =>

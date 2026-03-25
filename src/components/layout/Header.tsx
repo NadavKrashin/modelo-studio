@@ -10,6 +10,7 @@ import { useCartStore } from '@/lib/store';
 export function Header() {
   const pathname = usePathname() || '';
   const totalItems = useCartStore((s) => s.totalItems);
+  const openCart = useCartStore((s) => s.openCart);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   let logoSrc = '/images/logo/main.jpeg';
@@ -71,8 +72,8 @@ export function Header() {
             >
               <User className="w-5 h-5 text-slate-400 hover:text-black transition-colors" strokeWidth={1.8} />
             </Link>
-            <Link
-              href="/cart"
+            <button
+              onClick={openCart}
               className="relative flex items-center justify-center w-10 h-10 rounded-xl hover:bg-slate-100 transition-all"
               aria-label="סל קניות"
             >
@@ -82,7 +83,7 @@ export function Header() {
                   {totalItems}
                 </span>
               )}
-            </Link>
+            </button>
           </div>
 
           {/* Mobile */}
@@ -106,8 +107,8 @@ export function Header() {
               >
                 <User className="w-5 h-5 text-slate-400" strokeWidth={1.8} />
               </Link>
-              <Link
-                href="/cart"
+              <button
+                onClick={openCart}
                 className="relative flex items-center justify-center w-10 h-10 rounded-xl hover:bg-slate-100 transition-all"
                 aria-label="סל קניות"
               >
@@ -117,7 +118,7 @@ export function Header() {
                     {totalItems}
                   </span>
                 )}
-              </Link>
+              </button>
               <button
                 onClick={() => setMobileOpen(!mobileOpen)}
                 className="flex items-center justify-center w-10 h-10 rounded-xl hover:bg-slate-100 transition-colors"

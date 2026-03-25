@@ -14,83 +14,62 @@ export default async function StudioHomePage() {
   return (
     <>
       {/* ─── HERO ─── */}
-      <section className="relative overflow-hidden bg-gradient-to-bl from-blue-600 via-primary to-indigo-700">
-        {/* Decorative geometry */}
+      <section className="relative overflow-hidden w-full bg-black" style={{ backgroundColor: '#000' }} dir="rtl">
         <div className="absolute inset-0 overflow-hidden pointer-events-none select-none" aria-hidden>
-          <div className="absolute -top-24 -left-24 w-96 h-96 bg-white/5 rounded-full blur-3xl" />
-          <div className="absolute bottom-0 right-0 w-[480px] h-[480px] bg-indigo-400/10 rounded-full blur-3xl" />
+          <div className="absolute -top-32 right-1/4 w-[500px] h-[500px] bg-slate-800/30 rounded-full blur-[120px]" />
+          <div className="absolute bottom-0 left-1/4 w-[400px] h-[400px] bg-slate-700/15 rounded-full blur-[100px]" />
         </div>
 
-        {/* Main hero photo (desktop) */}
-        <div
-          className="hidden lg:block absolute left-0 xl:left-6 top-1/2 -translate-y-1/2 pointer-events-none select-none"
-          aria-hidden
-        >
-          <div className="relative w-[260px] xl:w-[300px]">
-            <div className="absolute inset-0 bg-black/20 blur-3xl rounded-full translate-y-10" />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/hero-figurine.png"
-              alt="מודל תלת מימדי מודפס"
-              className="relative w-full h-auto drop-shadow-2xl"
-              loading="lazy"
-            />
-          </div>
-        </div>
-
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-20 md:pt-24 md:pb-28">
-          <div className="max-w-2xl lg:max-w-3xl ml-auto lg:ml-[320px]">
-            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm text-blue-100 text-xs font-medium px-3.5 py-1.5 rounded-full mb-6 border border-white/10">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 md:pt-28 md:pb-32">
+          <div className="flex flex-col items-center justify-center text-center max-w-4xl mx-auto">
+            <div className="inline-flex items-center gap-2 bg-white/5 text-white/70 text-xs font-medium px-4 py-2 rounded-full mb-8 border border-white/10">
               <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
               אלפי מודלים זמינים להדפסה
             </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-[1.15] mb-5 tracking-tight">
+            <h1 className="text-5xl md:text-7xl font-extrabold text-white leading-[1.1] mb-6 tracking-tight uppercase">
               Modelo Studio
             </h1>
-            <p className="text-base sm:text-lg text-blue-100/90 mb-9 leading-relaxed max-w-xl">
-              Browse thousands of ready‑to‑print 3D models, customize size and color, and order high‑quality 3D prints delivered to your door.
+            <p className="text-lg md:text-xl text-slate-200 mb-10 max-w-2xl mx-auto leading-relaxed">
+              חפשו מתוך אלפי מודלים תלת-ממדיים המוכנים להדפסה, התאימו אישית את הגודל והצבע, והזמינו הדפסות באיכות פרימיום עד דלת הבית.
             </p>
 
             {/* Search Bar */}
-            <form action="/studio/search" method="GET">
-              <div className="max-w-2xl">
-                <div
-                  dir="rtl"
-                  className="flex items-center gap-1.5 rounded-2xl bg-white p-1.5 shadow-2xl shadow-black/20 ring-1 ring-white/25 transition-all focus-within:ring-2 focus-within:ring-cyan-200/70"
+            <form action="/studio/search" method="GET" className="w-full max-w-2xl">
+              <div
+                className="flex items-center gap-1.5 rounded-2xl bg-white p-1.5 shadow-2xl shadow-black/50 ring-1 ring-white/20 transition-all focus-within:ring-2 focus-within:ring-white/40"
+              >
+                <button
+                  type="submit"
+                  className="shrink-0 h-11 px-7 rounded-xl bg-black hover:bg-slate-800 text-white font-semibold text-sm transition-all"
                 >
-                  <button
-                    type="submit"
-                    className="shrink-0 h-10 px-6 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-sm transition-all shadow-md shadow-primary/25"
-                  >
-                    חיפוש
-                  </button>
+                  חיפוש
+                </button>
 
-                  <div className="flex items-center gap-3 flex-1 px-4">
-                    <input
-                      type="search"
-                      name="q"
-                      placeholder='חפשו מודל... למשל: "דרקון", "מעמד טלפון", "עציץ"'
-                      className="flex-1 py-3.5 text-right text-gray-900 placeholder-gray-400 text-[15px] outline-none bg-transparent"
-                      dir="rtl"
-                      autoComplete="off"
-                    />
-                    <svg className="w-5 h-5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                    </svg>
-                  </div>
+                <div className="flex items-center gap-3 flex-1 px-4">
+                  <input
+                    type="search"
+                    name="q"
+                    placeholder='חפשו מודל... למשל: "דרקון", "מעמד טלפון", "עציץ"'
+                    className="flex-1 py-3.5 text-right text-gray-900 placeholder-gray-400 text-[15px] outline-none bg-white"
+                    dir="rtl"
+                    autoComplete="off"
+                  />
+                  <svg className="w-5 h-5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                  </svg>
                 </div>
               </div>
             </form>
 
             {/* Quick suggestions */}
-            <div className="flex flex-wrap items-center gap-2 mt-5">
-              <span className="text-blue-200/60 text-xs">פופולרי:</span>
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-6">
+              <span className="text-slate-400 text-xs">פופולרי:</span>
               {['דרקון', 'מעמד טלפון', 'עציץ', 'מחזיק מפתחות', 'אהיל'].map((term) => (
                 <Link
                   key={term}
                   href={`/studio/search?q=${encodeURIComponent(term)}`}
-                  className="text-xs text-blue-100 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full transition-colors border border-white/10"
+                  className="text-xs text-slate-300 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-full transition-colors border border-slate-600 hover:border-slate-400"
                 >
                   {term}
                 </Link>

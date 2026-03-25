@@ -97,20 +97,18 @@ export default function PersonalPage() {
       </section>
 
       {/* ── How It Works ── */}
-      <section className="relative px-6 py-28 overflow-hidden bg-gradient-to-b from-slate-50 via-white to-slate-50">
-        {/* Bokeh background lights */}
+      <section className="relative px-6 py-28 overflow-hidden bg-white">
         <div className="pointer-events-none absolute inset-0" aria-hidden="true">
           <div className="absolute -top-20 right-1/4 w-72 h-72 rounded-full bg-blue-400/10 blur-3xl" />
           <div className="absolute top-1/3 -left-10 w-56 h-56 rounded-full bg-blue-500/8 blur-3xl" />
-          <div className="absolute bottom-0 right-1/3 w-64 h-64 rounded-full bg-slate-300/20 blur-3xl" />
+          <div className="absolute bottom-0 right-1/3 w-64 h-64 rounded-full bg-slate-200/30 blur-3xl" />
         </div>
 
         <div className="relative max-w-5xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-extrabold text-center mb-4 text-blue-600">איך זה עובד?</h2>
-          <p className="text-center text-slate-400 mb-16 text-base">תהליך פשוט בארבעה שלבים — מהתמונה ועד הדלת.</p>
+          <p className="text-center text-slate-500 mb-16 text-base">תהליך פשוט בארבעה שלבים — מהתמונה ועד הדלת.</p>
 
           <div className="relative grid grid-cols-1 md:grid-cols-4 gap-12 md:gap-8 text-center">
-            {/* Connecting line (desktop only) */}
             <div className="hidden md:block absolute top-9 right-[12.5%] left-[12.5%] h-px bg-gradient-to-l from-blue-200 via-blue-300 to-blue-200" aria-hidden="true" />
 
             {PROCESS_STEPS.map((s) => {
@@ -118,13 +116,13 @@ export default function PersonalPage() {
               return (
                 <div
                   key={s.title}
-                  className="group relative flex flex-col items-center rounded-2xl border border-transparent bg-white/70 backdrop-blur-sm px-4 py-8 transition-all duration-300 ease-in-out hover:-translate-y-2 hover:scale-105 hover:border-blue-300 hover:shadow-[0_8px_30px_-6px_rgba(59,130,246,0.25)]"
+                  className="group relative flex flex-col items-center rounded-2xl border border-transparent bg-white/70 backdrop-blur-sm px-4 py-8 transition-all duration-300 ease-in-out hover:-translate-y-3 hover:scale-105 hover:border-blue-300 hover:shadow-[0_12px_40px_-8px_rgba(59,130,246,0.25)]"
                 >
                   <div className="relative z-10 w-16 h-16 rounded-2xl bg-white border border-slate-200 flex items-center justify-center mb-5 transition-all duration-300 group-hover:border-blue-400 group-hover:shadow-md group-hover:shadow-blue-200/50">
-                    <Icon className="w-7 h-7 text-blue-500 transition-colors duration-300 group-hover:text-blue-600" strokeWidth={1.5} />
+                    <Icon className="w-7 h-7 text-blue-500 transition-all duration-300 group-hover:text-blue-600 group-hover:animate-pulse" strokeWidth={1.5} />
                   </div>
                   <h3 className="font-bold text-base mb-2 text-slate-900">{s.title}</h3>
-                  <p className="text-sm text-slate-400 leading-relaxed max-w-[220px]">{s.desc}</p>
+                  <p className="text-sm text-slate-500 leading-relaxed max-w-[220px]">{s.desc}</p>
                 </div>
               );
             })}

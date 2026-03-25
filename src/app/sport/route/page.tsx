@@ -2,16 +2,24 @@
 
 import Image from "next/image";
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { CheckCircle, UploadCloud, Trophy, Frame, Map } from "lucide-react";
 import { useCartStore } from "@/lib/store";
 
 const BASE_PRICE = 189;
 const FRAME_ADDON = 50;
 
+const FRAME_COLORS = [
+  { name: "שחור", swatchCls: "bg-black" },
+  { name: "לבן", swatchCls: "bg-white border border-gray-200" },
+  { name: "בז'", swatchCls: "bg-stone-200" },
+  { name: "אפור", swatchCls: "bg-gray-500" },
+  { name: "כחול", swatchCls: "bg-blue-900" },
+  { name: "אדום", swatchCls: "bg-red-800" },
+] as const;
+
 export default function SportRoutePage() {
-  const router = useRouter();
   const addItem = useCartStore((s) => s.addItem);
+  const openCart = useCartStore((s) => s.openCart);
 
   const [step, setStep] = useState(0);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -19,8 +27,9 @@ export default function SportRoutePage() {
   const [participantName, setParticipantName] = useState("");
   const [distance, setDistance] = useState("");
   const [wantsFrame, setWantsFrame] = useState(false);
+  const [frameColor, setFrameColor] = useState("שחור");
 
-  const totalSteps = 4;
+  const totalSteps = 5;
   const totalPrice = useMemo(() => BASE_PRICE + (wantsFrame ? FRAME_ADDON : 0), [wantsFrame]);
   const progress = ((step + 1) / totalSteps) * 100;
 
@@ -44,13 +53,14 @@ export default function SportRoutePage() {
         `משתתף: ${participantName || "-"}`,
         `מרחק: ${distance || "-"} ק״מ`,
         wantsFrame ? "כולל מסגרת" : "ללא מסגרת",
+        `צבע מסגרת: ${frameColor}`,
         uploadedFile ? `קובץ: ${uploadedFile.name}` : "ללא קובץ",
       ],
       quantity: 1,
       unitPrice: totalPrice,
       subtotal: totalPrice,
     });
-    router.push("/cart");
+    openCart();
   };
 
   const inputCls =
@@ -64,6 +74,7 @@ export default function SportRoutePage() {
           <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 mb-4">
             התאימו אישית — משושה מסלול
           </h1>
+          <div className="mb-5 text-slate-500 text-sm font-medium">קוטר 12 ס״מ</div>
           <div className="aspect-square overflow-hidden rounded-2xl border border-slate-200 bg-white relative">
             <Image src="/images/sport/map.jpeg" alt="משושה מסלול" fill className="object-cover" />
           </div>
@@ -130,8 +141,45 @@ export default function SportRoutePage() {
               </div>
             )}
 
-            {/* Step 2: Upgrades */}
+            {/* Step 2: Frame Color */}
             {step === 2 && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Frame size={20} strokeWidth={1.7} />
+                  <h2 className="text-2xl font-bold text-slate-900">בחירת צבע מסגרת</h2>
+                </div>
+                <p className="text-slate-600 mb-6">בחרו את צבע מסגרת התצוגה.</p>
+
+                <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
+                  {FRAME_COLORS.map((c) => {
+                    const active = frameColor === c.name;
+                    return (
+                      <button
+                        key={c.name}
+                        type="button"
+                        onClick={() => setFrameColor(c.name)}
+                        className="rounded-2xl border border-slate-200 bg-white p-4 text-center transition-all hover:border-slate-300"
+                      >
+                        <div className="flex flex-col items-center">
+                          <span
+                            className={[
+                              "w-12 h-12 rounded-full mx-auto cursor-pointer flex-shrink-0 transition-shadow",
+                              c.swatchCls,
+                              active ? "ring-2 ring-offset-2 ring-offset-white ring-black" : "",
+                            ].join(" ")}
+                            aria-label={c.name}
+                          />
+                          <span className="mt-3 font-bold text-sm text-slate-900">{c.name}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Upgrades */}
+            {step === 3 && (
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <Frame size={20} strokeWidth={1.7} />
@@ -148,8 +196,8 @@ export default function SportRoutePage() {
               </div>
             )}
 
-            {/* Step 3: Summary */}
-            {step === 3 && (
+            {/* Step 4: Summary */}
+            {step === 4 && (
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <Map size={20} strokeWidth={1.7} />
@@ -162,6 +210,7 @@ export default function SportRoutePage() {
                   <Row label="משתתף" value={participantName || "-"} />
                   <Row label="מרחק" value={`${distance || "-"} ק״מ`} />
                   <Row label="מסגרת" value={wantsFrame ? "כולל מסגרת" : "ללא מסגרת"} />
+                  <Row label="צבע מסגרת" value={frameColor} />
                   <div className="border-t border-slate-200 pt-3 flex justify-between gap-4">
                     <span className="font-bold text-slate-900">סה&quot;כ</span>
                     <span className="text-xl font-extrabold text-black">₪{totalPrice}</span>

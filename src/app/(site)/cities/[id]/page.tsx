@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Image from "next/image";
 import { Check, ChevronDown, Plus, Minus, Search, Square, Type } from "lucide-react";
 import { useCartStore } from "@/lib/store";
@@ -79,8 +79,8 @@ const FAQ_ITEMS = (dims: string) => [
 
 export default function CitiesConfiguratorPage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
   const addItem = useCartStore((s) => s.addItem);
+  const openCart = useCartStore((s) => s.openCart);
 
   const product = PRODUCTS[id] ?? PRODUCTS["cube"];
 
@@ -133,7 +133,7 @@ export default function CitiesConfiguratorPage() {
           : "ללא הקדשה",
       ],
     });
-    router.push("/cart");
+    openCart();
   };
 
   const coverOverlayCls =

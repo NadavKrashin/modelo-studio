@@ -4,6 +4,7 @@ import './globals.css';
 import { CartProvider } from '@/context/CartContext';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
+import { SlideOutCart } from '@/components/SlideOutCart';
 
 const heebo = Heebo({
   variable: '--font-heebo',
@@ -49,6 +50,7 @@ export default function RootLayout({
             <Header />
             <main className="flex-1">{children}</main>
             <Footer />
+            <SlideOutCart />
           </div>
         </CartProvider>
       </body>
