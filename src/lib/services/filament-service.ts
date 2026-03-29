@@ -34,7 +34,7 @@ export class FilamentService {
         colorName: f.colorName,
         localizedColorName: f.colorName,
         priceModifier: f.priceModifier,
-        inStock: f.available,
+        inStock: f.rollQuantity > 0 && f.available,
         isPopular: f.sortOrder < 5,
       }));
   }
@@ -45,6 +45,10 @@ export class FilamentService {
 
   updateFilament(id: string, patch: UpdateFilamentInput): Promise<Filament | null> {
     return this.repo.update(id, patch);
+  }
+
+  deleteFilament(id: string): Promise<boolean> {
+    return this.repo.delete(id);
   }
 
   toggleFilamentAvailability(id: string, available: boolean): Promise<Filament | null> {

@@ -27,15 +27,15 @@ const colorOptions = [
 ] as const;
 
 const sizeOptions = [
-  { id: 'rectangle', label: 'מלבן (17x12 ס״מ)', price: 149 },
-  { id: 'cube', label: 'קובייה (15x15 ס״מ)', price: 169 },
+  { id: 'minicube', label: 'מיני קובייה (10x10 ס״מ)', price: 159 },
+  { id: 'cube', label: 'קובייה (15x15 ס״מ)', price: 199 },
 ] as const;
 
 export default function ModeloCitiesProductPage() {
   const addItem = useCartStore((s) => s.addItem);
   const [mainImage, setMainImage] = useState(galleryImages[0]);
   const [selectedCity, setSelectedCity] = useState('');
-  const [selectedSize, setSelectedSize] = useState<'rectangle' | 'cube' | null>(null);
+  const [selectedSize, setSelectedSize] = useState<'minicube' | 'cube' | null>(null);
   const [selectedColor, setSelectedColor] = useState<'black' | 'white' | null>(null);
   const [activeStep, setActiveStep] = useState(1);
   const [openAccordion, setOpenAccordion] = useState<'shipping' | 'aboutModel' | 'materials' | null>(null);
@@ -62,7 +62,7 @@ export default function ModeloCitiesProductPage() {
       department: 'cities',
       attributes: [
         selectedCity,
-        selectedSize === 'rectangle' ? '17x12 ס״מ' : '15x15 ס״מ',
+        selectedSize === 'minicube' ? '10×10 ס״מ' : '15×15 ס״מ',
         selectedColor === 'black' ? 'מסגרת שחורה' : 'מסגרת לבנה',
       ],
       quantity: 1,

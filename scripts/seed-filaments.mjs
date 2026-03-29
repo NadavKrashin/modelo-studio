@@ -191,6 +191,9 @@ async function run() {
   for (const filament of DEFAULT_FILAMENTS) {
     const doc = {
       ...filament,
+      rollQuantity: filament.rollQuantity ?? 2,
+      stockStatus: 'in_stock',
+      isSportColor: false,
       createdAt: now,
       updatedAt: now,
     };

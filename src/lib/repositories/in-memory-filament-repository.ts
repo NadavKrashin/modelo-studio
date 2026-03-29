@@ -2,9 +2,16 @@ import type {
   CreateFilamentInput,
   Filament,
   FilamentOption,
+  FilamentStockStatus,
   UpdateFilamentInput,
 } from '@/lib/types';
 import type { FilamentRepository } from './interfaces';
+
+function deriveStockStatus(rolls: number): FilamentStockStatus {
+  if (rolls <= 0) return 'out_of_stock';
+  if (rolls <= 1) return 'low_stock';
+  return 'in_stock';
+}
 
 function toOption(f: Filament): FilamentOption {
   return {
@@ -16,7 +23,7 @@ function toOption(f: Filament): FilamentOption {
     colorName: f.colorName,
     localizedColorName: f.colorName,
     priceModifier: f.priceModifier,
-    inStock: f.available,
+    inStock: f.rollQuantity > 0 && f.available,
     isPopular: f.sortOrder < 5,
   };
 }
@@ -34,13 +41,15 @@ export class InMemoryFilamentRepository implements FilamentRepository {
 
   async findAvailable(): Promise<FilamentOption[]> {
     return [...this.items.values()]
-      .filter((f) => f.available && f.isActive)
+      .filter((f) => f.available && f.isActive && f.rollQuantity > 0)
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .map(toOption);
   }
 
   async create(input: CreateFilamentInput): Promise<Filament> {
     const now = new Date().toISOString();
+    const rolls = input.rollQuantity ?? 0;
+    const stockStatus = deriveStockStatus(rolls);
     const filament: Filament = {
       id: input.id,
       name: input.name,
@@ -51,6 +60,10 @@ export class InMemoryFilamentRepository implements FilamentRepository {
       sortOrder: input.sortOrder,
       priceModifier: input.priceModifier ?? 0,
       isActive: input.isActive ?? true,
+      rollQuantity: rolls,
+      stockWeightGrams: input.stockWeightGrams,
+      stockStatus,
+      isSportColor: input.isSportColor ?? false,
       imageUrl: input.imageUrl,
       notes: input.notes,
       createdAt: now,
@@ -58,7 +71,7 @@ export class InMemoryFilamentRepository implements FilamentRepository {
       material: input.materialType,
       colorHex: input.hexColor,
       localizedColorName: input.colorName,
-      inStock: input.available,
+      inStock: rolls > 0 && input.available,
     };
     this.items.set(filament.id, filament);
     return filament;
@@ -67,6 +80,7 @@ export class InMemoryFilamentRepository implements FilamentRepository {
   async update(id: string, patch: UpdateFilamentInput): Promise<Filament | null> {
     const current = this.items.get(id);
     if (!current) return null;
+    const nextRolls = patch.rollQuantity !== undefined ? patch.rollQuantity : current.rollQuantity;
     const next: Filament = {
       ...current,
       ...patch,
@@ -77,12 +91,17 @@ export class InMemoryFilamentRepository implements FilamentRepository {
       sortOrder: patch.sortOrder ?? current.sortOrder,
       priceModifier: patch.priceModifier ?? current.priceModifier,
       isActive: patch.isActive ?? current.isActive,
+      rollQuantity: nextRolls,
+      stockWeightGrams:
+        patch.stockWeightGrams !== undefined ? patch.stockWeightGrams : current.stockWeightGrams,
+      stockStatus: deriveStockStatus(nextRolls),
+      isSportColor: patch.isSportColor ?? current.isSportColor,
       updatedAt: new Date().toISOString(),
     };
     next.material = next.materialType;
     next.colorHex = next.hexColor;
     next.localizedColorName = next.colorName;
-    next.inStock = next.available;
+    next.inStock = nextRolls > 0 && next.available;
     this.items.set(id, next);
     return next;
   }
@@ -97,5 +116,9 @@ export class InMemoryFilamentRepository implements FilamentRepository {
 
   async setActive(id: string, active: boolean): Promise<Filament | null> {
     return this.update(id, { isActive: active });
+  }
+
+  async delete(id: string): Promise<boolean> {
+    return this.items.delete(id);
   }
 }

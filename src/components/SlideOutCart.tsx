@@ -1,17 +1,29 @@
 "use client";
 
-import { useEffect } from "react";
-import Image from "next/image";
+import { useEffect, useMemo } from "react";
 import Link from "next/link";
+import { SafeCartItemImage } from "@/components/SafeCartItemImage";
+import { CouponInput } from "@/components/cart/CouponInput";
 import { Minus, Plus, Trash2, X } from "lucide-react";
 import { useCartStore } from "@/lib/store";
+import { computeCartTotal, computeDiscountAmount } from "@/lib/store/cart-discount";
+import { formatPrice } from "@/lib/pricing";
 
 export function SlideOutCart() {
   const isOpen = useCartStore((s) => s.isCartOpen);
   const close = useCartStore((s) => s.closeCart);
   const items = useCartStore((s) => s.items);
   const subtotal = useCartStore((s) => s.subtotal);
+  const appliedCoupon = useCartStore((s) => s.appliedCoupon);
   const totalItems = useCartStore((s) => s.totalItems);
+  const discountAmount = useMemo(
+    () => computeDiscountAmount(subtotal, appliedCoupon),
+    [subtotal, appliedCoupon],
+  );
+  const cartTotal = useMemo(
+    () => computeCartTotal(subtotal, appliedCoupon),
+    [subtotal, appliedCoupon],
+  );
   const removeItem = useCartStore((s) => s.removeItem);
   const updateQuantity = useCartStore((s) => s.updateQuantity);
 
@@ -90,7 +102,7 @@ export function SlideOutCart() {
                     {/* Thumbnail */}
                     <div className="w-20 h-20 rounded-xl bg-slate-100 shrink-0 relative overflow-hidden">
                       {imageUrl ? (
-                        <Image src={imageUrl} alt={title} fill className="object-cover" />
+                        <SafeCartItemImage key={`${item.id}-${imageUrl}`} src={imageUrl} alt={title} />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <svg className="w-8 h-8 text-slate-300" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth={1.5}>
@@ -148,16 +160,43 @@ export function SlideOutCart() {
         {/* ── Footer ── */}
         {items.length > 0 && (
           <div className="border-t border-slate-200 px-6 py-5 shrink-0 space-y-4">
-            <div className="flex items-baseline justify-between">
-              <span className="font-bold text-slate-900">סה&quot;כ</span>
-              <span className="text-2xl font-extrabold text-black">₪{subtotal}</span>
+            <CouponInput compact />
+            <div className="space-y-2 text-sm">
+              <div className="flex items-baseline justify-between text-slate-600">
+                <span>סיכום ביניים</span>
+                <span className="font-semibold text-slate-900 tabular-nums" dir="ltr">
+                  {formatPrice(subtotal)}
+                </span>
+              </div>
+              {discountAmount > 0 && (
+                <div className="flex items-baseline justify-between">
+                  <span className="text-slate-600">הנחה</span>
+                  <span className="font-bold text-red-600 tabular-nums" dir="ltr">
+                    −{formatPrice(discountAmount)}
+                  </span>
+                </div>
+              )}
+              <div className="flex items-baseline justify-between border-t border-slate-200 pt-2">
+                <span className="font-bold text-slate-900">סה&quot;כ</span>
+                <span className="text-2xl font-extrabold text-black tabular-nums" dir="ltr">
+                  {formatPrice(cartTotal)}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400">לפני משלוח</p>
             </div>
             <Link
               href="/checkout"
               onClick={close}
               className="flex items-center justify-center w-full rounded-2xl bg-black py-4 text-white font-bold text-base hover:bg-slate-800 transition-colors"
             >
-              מעבר לתשלום
+              מעבר לתשלום — {formatPrice(cartTotal)}
+            </Link>
+            <Link
+              href="/cart"
+              onClick={close}
+              className="flex w-full items-center justify-center rounded-2xl border border-slate-200 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+            >
+              לסל המלא
             </Link>
             <button
               onClick={close}

@@ -4,13 +4,12 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { ShoppingBag, User } from 'lucide-react';
+import { Building2, Medal, ShoppingBag, User, UserCircle } from 'lucide-react';
 import { useCartStore } from '@/lib/store';
 
 export function Header() {
   const pathname = usePathname() || '';
   const totalItems = useCartStore((s) => s.totalItems);
-  const openCart = useCartStore((s) => s.openCart);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   let logoSrc = '/images/logo/main.jpeg';
@@ -24,10 +23,16 @@ export function Header() {
     logoSrc = '/images/logo/studio.jpeg';
   }
 
-  const deptClass = (isActive: boolean) =>
-    isActive
-      ? 'text-black font-extrabold text-lg'
-      : 'text-slate-500 hover:text-black font-medium text-lg transition-colors';
+  const deptNavClass = (isActive: boolean) =>
+    [
+      'flex flex-col items-center justify-center text-center transition-colors',
+      isActive
+        ? 'text-black font-extrabold text-lg'
+        : 'text-slate-700 hover:text-black font-medium text-lg',
+    ].join(' ');
+
+  const deptIconClass = (isActive: boolean) =>
+    `mb-1 h-4 w-4 shrink-0 font-light ${isActive ? 'opacity-90' : 'opacity-70'}`;
 
   return (
     <>
@@ -49,16 +54,22 @@ export function Header() {
 
           {/* Center: Department navigation */}
           <nav className="hidden md:flex items-center gap-10">
-            <Link href="/studio" className={deptClass(pathname.includes('/studio'))}>
-              סטודיו
-            </Link>
-            <Link href="/personal" className={deptClass(pathname.includes('/personal'))}>
+            {/* TODO: Restore Studio page later — set the condition below to true or replace with the Link. */}
+            {false && (
+              <Link href="/studio" className={deptNavClass(pathname.includes('/studio'))}>
+                סטודיו
+              </Link>
+            )}
+            <Link href="/personal" className={deptNavClass(pathname.includes('/personal'))}>
+              <User className={deptIconClass(pathname.includes('/personal'))} strokeWidth={1.5} />
               פרסונל
             </Link>
-            <Link href="/cities" className={deptClass(pathname.includes('/cities'))}>
+            <Link href="/cities" className={deptNavClass(pathname.includes('/cities'))}>
+              <Building2 className={deptIconClass(pathname.includes('/cities'))} strokeWidth={1.5} />
               סיטיז
             </Link>
-            <Link href="/sport" className={deptClass(pathname.includes('/sport'))}>
+            <Link href="/sport" className={deptNavClass(pathname.includes('/sport'))}>
+              <Medal className={deptIconClass(pathname.includes('/sport'))} strokeWidth={1.5} />
               ספורט
             </Link>
           </nav>
@@ -70,10 +81,10 @@ export function Header() {
               className="flex items-center justify-center w-10 h-10 rounded-xl hover:bg-slate-100 transition-all"
               aria-label="אזור אישי"
             >
-              <User className="w-5 h-5 text-slate-400 hover:text-black transition-colors" strokeWidth={1.8} />
+              <UserCircle className="w-5 h-5 text-slate-400 hover:text-black transition-colors" strokeWidth={1.8} />
             </Link>
-            <button
-              onClick={openCart}
+            <Link
+              href="/cart"
               className="relative flex items-center justify-center w-10 h-10 rounded-xl hover:bg-slate-100 transition-all"
               aria-label="סל קניות"
             >
@@ -83,7 +94,7 @@ export function Header() {
                   {totalItems}
                 </span>
               )}
-            </button>
+            </Link>
           </div>
 
           {/* Mobile */}
@@ -105,10 +116,10 @@ export function Header() {
                 className="flex items-center justify-center w-10 h-10 rounded-xl hover:bg-slate-100 transition-all"
                 aria-label="אזור אישי"
               >
-                <User className="w-5 h-5 text-slate-400" strokeWidth={1.8} />
+                <UserCircle className="w-5 h-5 text-slate-400" strokeWidth={1.8} />
               </Link>
-              <button
-                onClick={openCart}
+              <Link
+                href="/cart"
                 className="relative flex items-center justify-center w-10 h-10 rounded-xl hover:bg-slate-100 transition-all"
                 aria-label="סל קניות"
               >
@@ -118,7 +129,7 @@ export function Header() {
                     {totalItems}
                   </span>
                 )}
-              </button>
+              </Link>
               <button
                 onClick={() => setMobileOpen(!mobileOpen)}
                 className="flex items-center justify-center w-10 h-10 rounded-xl hover:bg-slate-100 transition-colors"
@@ -147,24 +158,30 @@ export function Header() {
             <div className="max-w-7xl mx-auto px-5 py-5 space-y-2">
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { href: '/studio', label: 'סטודיו' },
-                  { href: '/personal', label: 'פרסונל' },
-                  { href: '/cities', label: 'סיטיז' },
-                  { href: '/sport', label: 'ספורט' },
-                ].map((d) => (
-                  <Link
-                    key={d.href}
-                    href={d.href}
-                    onClick={() => setMobileOpen(false)}
-                    className={`flex items-center justify-center px-3 py-3 rounded-xl text-sm font-semibold transition-colors ${
-                      pathname.includes(d.href)
-                        ? 'bg-black text-white'
-                        : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
-                    }`}
-                  >
-                    {d.label}
-                  </Link>
-                ))}
+                  // TODO: Restore Studio page later — { href: '/studio', label: 'סטודיו', Icon: ... },
+                  { href: '/personal', label: 'פרסונל', Icon: User },
+                  { href: '/cities', label: 'סיטיז', Icon: Building2 },
+                  { href: '/sport', label: 'ספורט', Icon: Medal },
+                ].map((d) => {
+                  const active = pathname.includes(d.href);
+                  const Icon = d.Icon;
+                  return (
+                    <Link
+                      key={d.href}
+                      href={d.href}
+                      onClick={() => setMobileOpen(false)}
+                      className={`flex flex-col items-center justify-center gap-0.5 px-3 py-3 rounded-xl text-xs font-semibold transition-colors ${
+                        active ? 'bg-black text-white' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      <Icon
+                        className={`h-4 w-4 font-light ${active ? 'opacity-95' : 'opacity-70'}`}
+                        strokeWidth={1.5}
+                      />
+                      {d.label}
+                    </Link>
+                  );
+                })}
               </div>
 
               <div className="pt-2 border-t border-slate-100 space-y-1">

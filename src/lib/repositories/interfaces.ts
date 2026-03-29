@@ -81,6 +81,7 @@ export interface FilamentRepository {
   findAvailable(): Promise<FilamentOption[]>;
   create(input: CreateFilamentInput): Promise<Filament>;
   update(id: string, patch: UpdateFilamentInput): Promise<Filament | null>;
+  delete(id: string): Promise<boolean>;
   setAvailability(id: string, available: boolean): Promise<Filament | null>;
   setSortOrder(id: string, sortOrder: number): Promise<Filament | null>;
   setActive(id: string, active: boolean): Promise<Filament | null>;

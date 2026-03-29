@@ -1,94 +1,63 @@
 'use client';
 
-import { useMemo, useState, type ReactNode } from 'react';
-import type { CreateFilamentInput, Filament, FilamentMaterial, UpdateFilamentInput } from '@/lib/types';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+  writeBatch,
+} from 'firebase/firestore';
+import { ArrowDown, ArrowUp, ArrowUpDown, GripVertical, Minus, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
+import { getFirebaseClientFirestore } from '@/lib/firebase/client';
+import {
+  deriveStockStatusFromRolls,
+  FILAMENTS_COLLECTION,
+  supplyDocToFilament,
+} from '@/lib/firebase/supply-tracker';
+import type { Filament, FilamentMaterial, UpdateFilamentInput } from '@/lib/types';
 
 const MATERIALS: FilamentMaterial[] = ['PLA', 'PETG', 'ABS', 'TPU', 'Nylon', 'Resin'];
+
 const INPUT_CLASS =
   'w-full rounded-2xl border border-border bg-white px-3.5 py-3 text-sm text-foreground outline-none transition-all placeholder:text-muted/70 focus:border-primary focus:ring-4 focus:ring-primary/10';
 
-interface Props {
-  initialFilaments: Filament[];
-}
-
 interface FilamentFormState {
-  id: string;
-  name: string;
   colorName: string;
   hexColor: string;
   materialType: FilamentMaterial;
-  available: boolean;
-  sortOrder: number;
-  priceModifier: number;
+  rollQuantity: number;
+  isSportColor: boolean;
   isActive: boolean;
-  notes: string;
 }
 
-interface SectionCardProps {
-  title: string;
-  description?: string;
-  actions?: ReactNode;
-  children: ReactNode;
-}
-
-interface StatCardProps {
-  label: string;
-  value: number;
-  description: string;
-  icon: ReactNode;
-  accentClass: string;
-}
-
-interface FieldProps {
-  label: string;
-  hint?: string;
-  children: ReactNode;
-}
-
-interface StatusToggleProps {
-  label: string;
-  description: string;
-  checked: boolean;
-  disabled?: boolean;
-  onToggle: (nextValue: boolean) => void;
-}
-
-interface ActionButtonProps {
-  label: string;
-  icon: ReactNode;
-  onClick: () => void;
-  disabled?: boolean;
-}
-
-const EMPTY_FORM: FilamentFormState = {
-  id: '',
-  name: '',
-  colorName: '',
-  hexColor: '#FFFFFF',
-  materialType: 'PLA',
-  available: true,
-  sortOrder: 0,
-  priceModifier: 0,
-  isActive: true,
-  notes: '',
-};
+type DrawerState = { mode: 'create' } | { mode: 'edit'; id: string } | null;
 
 function sortFilaments(items: Filament[]) {
   return [...items].sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
-function buildFormFromFilament(filament: Filament): FilamentFormState {
+function reorderArray<T>(list: T[], fromIndex: number, toIndex: number): T[] {
+  if (fromIndex === toIndex) return [...list];
+  const next = [...list];
+  const [removed] = next.splice(fromIndex, 1);
+  next.splice(toIndex, 0, removed);
+  return next;
+}
+
+function buildFormFromFilament(f: Filament): FilamentFormState {
   return {
-    id: filament.id,
-    name: filament.name,
-    colorName: filament.colorName,
-    hexColor: filament.hexColor,
-    materialType: filament.materialType,
-    available: filament.available,
-    sortOrder: filament.sortOrder,
-    priceModifier: filament.priceModifier ?? 0,
-    isActive: filament.isActive,
-    notes: filament.notes ?? '',
+    colorName: f.name,
+    hexColor: f.hexColor,
+    materialType: f.materialType,
+    rollQuantity: f.rollQuantity,
+    isSportColor: f.isSportColor ?? false,
+    isActive: f.isActive,
   };
 }
 
@@ -103,87 +72,36 @@ function isValidHexColor(value: string) {
   return /^#[0-9A-F]{6}$/i.test(value.trim());
 }
 
-function validateFilamentForm(form: FilamentFormState) {
-  if (!form.id.trim()) return 'יש להזין מזהה פנימי.';
-  if (!form.name.trim()) return 'יש להזין שם תצוגה.';
+function newFilamentId() {
+  return `fil-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function computeAvailableForSave(form: FilamentFormState, prev: Filament | null, isCreate: boolean): boolean {
+  if (!form.isActive) return false;
+  if (form.rollQuantity <= 0) return false;
+  if (isCreate) return true;
+  if (prev && prev.rollQuantity === 0 && form.rollQuantity > 0) return true;
+  return prev?.available ?? true;
+}
+
+function validateForm(form: FilamentFormState) {
   if (!form.colorName.trim()) return 'יש להזין שם צבע.';
-  if (!isValidHexColor(form.hexColor)) return 'יש להזין קוד צבע תקין בפורמט HEX.';
+  if (!isValidHexColor(form.hexColor)) return 'יש להזין קוד צבע HEX תקין.';
+  if (!Number.isInteger(form.rollQuantity) || form.rollQuantity < 0) {
+    return 'כמות גלילים חייבת להיות מספר שלם ≥ 0.';
+  }
   return null;
 }
 
-function buildCreatePayload(form: FilamentFormState): CreateFilamentInput {
-  return {
-    id: form.id.trim(),
-    name: form.name.trim(),
-    colorName: form.colorName.trim(),
-    hexColor: form.hexColor.trim().toUpperCase(),
-    materialType: form.materialType,
-    available: form.available,
-    sortOrder: form.sortOrder,
-    priceModifier: form.priceModifier,
-    isActive: form.isActive,
-    notes: form.notes.trim() || undefined,
-  };
-}
-
-function buildUpdatePayload(form: FilamentFormState): UpdateFilamentInput {
-  return {
-    name: form.name.trim(),
-    colorName: form.colorName.trim(),
-    hexColor: form.hexColor.trim().toUpperCase(),
-    materialType: form.materialType,
-    available: form.available,
-    sortOrder: form.sortOrder,
-    priceModifier: form.priceModifier,
-    isActive: form.isActive,
-    notes: form.notes.trim() || undefined,
-  };
-}
-
-function formatPriceModifier(value: number) {
-  if (value === 0) return 'ללא תוספת';
-  const sign = value > 0 ? '+' : '-';
-  return `${sign}₪${Math.abs(value).toLocaleString('he-IL')}`;
-}
-
-function formatRelativeCount(value: number, total: number) {
-  if (total === 0) return '0%';
-  return `${Math.round((value / total) * 100)}%`;
-}
-
-function SectionCard({ title, description, actions, children }: SectionCardProps) {
-  return (
-    <section className="rounded-[28px] border border-border bg-white p-5 shadow-sm sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-extrabold text-foreground">{title}</h2>
-          {description ? <p className="mt-1 text-sm leading-6 text-muted">{description}</p> : null}
-        </div>
-        {actions}
-      </div>
-      <div className="mt-5">{children}</div>
-    </section>
-  );
-}
-
-function DashboardStatCard({ label, value, description, icon, accentClass }: StatCardProps) {
-  return (
-    <div className="rounded-[26px] border border-border bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold tracking-wide text-muted">{label}</p>
-          <p className="mt-3 text-3xl font-extrabold tracking-tight text-foreground">{value}</p>
-          <p className="mt-2 text-xs text-muted">{description}</p>
-        </div>
-        <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${accentClass}`}>
-          {icon}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Field({ label, hint, children }: FieldProps) {
+function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
   return (
     <label className="block space-y-2">
       <div className="flex items-center justify-between gap-3">
@@ -195,39 +113,186 @@ function Field({ label, hint, children }: FieldProps) {
   );
 }
 
-function ColorSwatch({ hexColor, title, subtitle }: { hexColor: string; title: string; subtitle?: string }) {
-  const previewColor = isValidHexColor(hexColor) ? hexColor : '#E2E8F0';
+function DrawerHexColorField({
+  hexColor,
+  onHexChange,
+}: {
+  hexColor: string;
+  onHexChange: (v: string) => void;
+}) {
+  const colorInputRef = useRef<HTMLInputElement>(null);
+  const displayHex = isValidHexColor(hexColor) ? hexColor.toUpperCase() : '#FFFFFF';
 
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-border bg-muted-bg/50 p-3">
-      <div
-        className="h-14 w-14 shrink-0 rounded-2xl border border-white shadow-inner ring-1 ring-black/5"
-        style={{ backgroundColor: previewColor }}
-      />
-      <div className="min-w-0">
-        <p className="truncate text-sm font-bold text-foreground">{title}</p>
-        {subtitle ? <p className="truncate text-xs text-muted">{subtitle}</p> : null}
-        <p className="mt-1 text-xs font-semibold text-foreground/80" dir="ltr">
-          {(hexColor || '#').toUpperCase()}
-        </p>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-semibold text-foreground">גוון (HEX)</span>
+        <span
+          className="font-mono text-xs text-muted tabular-nums"
+          dir="ltr"
+        >
+          {displayHex}
+        </span>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => colorInputRef.current?.click()}
+          className="inline-flex items-center gap-2.5 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-800 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50"
+        >
+          <span
+            className="h-9 w-9 shrink-0 rounded-xl border border-slate-200 shadow-inner ring-1 ring-black/5"
+            style={{ backgroundColor: isValidHexColor(hexColor) ? hexColor : '#E5E7EB' }}
+          />
+          בחר צבע
+        </button>
+        <input
+          ref={colorInputRef}
+          type="color"
+          className="sr-only"
+          value={displayHex}
+          onChange={(e) => onHexChange(e.target.value.toUpperCase())}
+          aria-label="בחירת צבע"
+        />
+        <input
+          className={`${INPUT_CLASS} max-w-[140px] flex-1 font-mono text-sm`}
+          dir="ltr"
+          placeholder="#RRGGBB"
+          value={hexColor}
+          onChange={(e) => {
+            const n = normalizeHexInput(e.target.value);
+            if (n !== null) onHexChange(n.toUpperCase());
+          }}
+        />
       </div>
     </div>
   );
 }
 
-function StatusToggle({ label, description, checked, disabled, onToggle }: StatusToggleProps) {
+function polar(cx: number, cy: number, r: number, angleRad: number) {
+  return [cx + r * Math.cos(angleRad), cy + r * Math.sin(angleRad)] as const;
+}
+
+function InventoryPieChart({ items }: { items: Filament[] }) {
+  const { segments, totalQty } = useMemo(() => {
+    const withQty = items
+      .map((f) => ({
+        id: f.id,
+        name: f.name,
+        qty: Math.max(0, f.rollQuantity ?? 0),
+        hex: isValidHexColor(f.hexColor) ? f.hexColor : '#94A3B8',
+      }))
+      .filter((x) => x.qty > 0);
+    const totalQty = withQty.reduce((s, x) => s + x.qty, 0);
+    return { segments: withQty, totalQty };
+  }, [items]);
+
+  const size = 220;
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = 92;
+
+  const paths = useMemo(() => {
+    if (totalQty <= 0 || segments.length === 0) return [];
+    let angle = -Math.PI / 2;
+    return segments.map((seg) => {
+      const sweep = (seg.qty / totalQty) * Math.PI * 2;
+      const start = angle;
+      const end = angle + sweep;
+      angle = end;
+
+      const [x1, y1] = polar(cx, cy, r, start);
+      const [x2, y2] = polar(cx, cy, r, end);
+      const largeArc = sweep > Math.PI ? 1 : 0;
+
+      const d = [`M ${cx} ${cy}`, `L ${x1} ${y1}`, `A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2}`, 'Z'].join(' ');
+
+      return { id: seg.id, d, fill: seg.hex, name: seg.name, qty: seg.qty };
+    });
+  }, [segments, totalQty, cx, cy, r]);
+
+  if (totalQty <= 0) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 py-12 text-center text-sm text-muted">
+        <p className="font-semibold text-slate-600">אין נתוני כמות להצגה</p>
+        <p className="text-xs">הוסיפו גלילים לפילמנטים כדי לראות התפלגות.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-8 md:flex-row md:items-start md:justify-center md:gap-12">
+      <div className="relative shrink-0">
+        <svg
+          width={size}
+          height={size}
+          viewBox={`0 0 ${size} ${size}`}
+          className="drop-shadow-sm"
+          role="img"
+          aria-label="תרשים עוגה של התפלגות מלאי"
+        >
+          <title>התפלגות מלאי</title>
+          {paths.map((p) => (
+            <path
+              key={p.id}
+              d={p.d}
+              fill={p.fill}
+              stroke="white"
+              strokeWidth={2}
+              className="transition-opacity hover:opacity-90"
+            />
+          ))}
+        </svg>
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div className="rounded-full bg-white/95 px-4 py-2 text-center shadow-sm ring-1 ring-slate-200/80">
+            <p className="text-xl font-extrabold tabular-nums text-slate-900">{totalQty}</p>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">גלילים</p>
+          </div>
+        </div>
+      </div>
+      <ul className="w-full max-w-sm space-y-2.5 text-sm md:min-w-[240px]">
+        {segments.map((seg) => (
+          <li
+            key={seg.id}
+            className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/90 px-3 py-2"
+          >
+            <div className="flex min-w-0 items-center gap-2">
+              <span
+                className="h-3.5 w-3.5 shrink-0 rounded-sm ring-1 ring-black/10"
+                style={{ backgroundColor: seg.hex }}
+              />
+              <span className="truncate font-semibold text-slate-800">{seg.name}</span>
+            </div>
+            <span className="shrink-0 font-mono text-xs font-bold tabular-nums text-slate-600" dir="ltr">
+              {seg.qty} ({Math.round((seg.qty / totalQty) * 100)}%)
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function DrawerSwitch({
+  label,
+  description,
+  checked,
+  onToggle,
+}: {
+  label: string;
+  description: string;
+  checked: boolean;
+  onToggle: (v: boolean) => void;
+}) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
-      disabled={disabled}
       onClick={() => onToggle(!checked)}
-      className={`flex w-full items-center justify-between gap-4 rounded-2xl border px-4 py-3 text-right transition-all ${
-        checked
-          ? 'border-primary/20 bg-primary/5'
-          : 'border-border bg-white hover:border-gray-300'
-      } disabled:cursor-not-allowed disabled:opacity-60`}
+      className={`flex w-full items-center justify-between gap-4 rounded-2xl border px-4 py-3.5 text-right transition-all ${
+        checked ? 'border-primary/30 bg-primary/5 ring-1 ring-primary/15' : 'border-border bg-white hover:border-slate-300'
+      }`}
     >
       <div>
         <p className="text-sm font-semibold text-foreground">{label}</p>
@@ -235,7 +300,7 @@ function StatusToggle({ label, description, checked, disabled, onToggle }: Statu
       </div>
       <span
         className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${
-          checked ? 'bg-primary' : 'bg-gray-300'
+          checked ? 'bg-primary' : 'bg-slate-300'
         }`}
       >
         <span
@@ -248,206 +313,351 @@ function StatusToggle({ label, description, checked, disabled, onToggle }: Statu
   );
 }
 
-function ActionButton({ label, icon, onClick, disabled }: ActionButtonProps) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-white px-3 py-2 text-xs font-semibold text-foreground transition-all hover:border-primary/20 hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-60"
-    >
-      {icon}
-      {label}
-    </button>
-  );
-}
-
-function FilamentStatusBadge({
-  active,
-  activeLabel,
-  inactiveLabel,
-  activeClass,
-  inactiveClass,
+function TableToggle({
+  checked,
+  disabled,
+  onChange,
+  ariaLabel,
 }: {
-  active: boolean;
-  activeLabel: string;
-  inactiveLabel: string;
-  activeClass: string;
-  inactiveClass: string;
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (v: boolean) => void;
+  ariaLabel: string;
 }) {
   return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold ${
-        active ? activeClass : inactiveClass
-      }`}
-    >
-      {active ? activeLabel : inactiveLabel}
-    </span>
+    <div dir="ltr" className="flex min-h-[44px] min-w-[60px] items-center justify-center overflow-visible px-1 py-1">
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={ariaLabel}
+        disabled={disabled}
+        onClick={() => !disabled && onChange(!checked)}
+        className={`relative h-8 w-[52px] shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+          checked ? 'bg-primary' : 'bg-slate-300'
+        }`}
+      >
+        <span
+          className={`pointer-events-none absolute top-1/2 h-6 w-6 -translate-y-1/2 rounded-full bg-white shadow-md ring-1 ring-black/10 transition-[left] duration-200 ease-out ${
+            checked ? 'left-[calc(100%-1.625rem)]' : 'left-1'
+          }`}
+        />
+      </button>
+    </div>
   );
 }
 
-export function FilamentsClient({ initialFilaments }: Props) {
-  const [filaments, setFilaments] = useState(sortFilaments(initialFilaments));
-  const [form, setForm] = useState<FilamentFormState>(EMPTY_FORM);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingForm, setEditingForm] = useState<FilamentFormState | null>(null);
+function buildUpdatePayload(patch: UpdateFilamentInput): Record<string, unknown> {
+  const payload: Record<string, unknown> = { updatedAt: serverTimestamp() };
+  if (patch.name !== undefined) payload.name = patch.name;
+  if (patch.colorName !== undefined) payload.colorName = patch.colorName;
+  if (patch.hexColor !== undefined) payload.hexColor = patch.hexColor;
+  if (patch.materialType !== undefined) payload.materialType = patch.materialType;
+  if (patch.available !== undefined) payload.available = patch.available;
+  if (patch.sortOrder !== undefined) payload.sortOrder = patch.sortOrder;
+  if (patch.priceModifier !== undefined) payload.priceModifier = patch.priceModifier;
+  if (patch.isActive !== undefined) payload.isActive = patch.isActive;
+  if (patch.isSportColor !== undefined) payload.isSportColor = patch.isSportColor;
+  if (patch.rollQuantity !== undefined) {
+    payload.quantity = patch.rollQuantity;
+    payload.stockStatus = deriveStockStatusFromRolls(patch.rollQuantity);
+  } else if (patch.stockStatus !== undefined) {
+    payload.stockStatus = patch.stockStatus;
+  }
+  if (patch.stockWeightGrams !== undefined) payload.stockWeightGrams = patch.stockWeightGrams;
+  if (patch.notes !== undefined) payload.notes = patch.notes;
+  if (patch.imageUrl !== undefined) payload.imageUrl = patch.imageUrl;
+  return payload;
+}
+
+export function FilamentsClient() {
+  const db = useMemo(() => getFirebaseClientFirestore(), []);
+
+  const [filaments, setFilaments] = useState<Filament[]>([]);
+  const [listLoading, setListLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [drawer, setDrawer] = useState<DrawerState>(null);
+  const [form, setForm] = useState<FilamentFormState | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [portalReady, setPortalReady] = useState(false);
+  const [sortMode, setSortMode] = useState<'manual' | 'name-asc' | 'name-desc'>('manual');
+  const [orderingBusy, setOrderingBusy] = useState(false);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPortalReady(true);
+  }, []);
+
+  const loadFilaments = useCallback(async () => {
+    setListLoading(true);
+    setError(null);
+    try {
+      const snap = await getDocs(collection(db, FILAMENTS_COLLECTION));
+      const list: Filament[] = [];
+      snap.forEach((d) => {
+        const f = supplyDocToFilament(d.id, d.data() as Record<string, unknown>);
+        if (f) list.push(f);
+      });
+      setFilaments(sortFilaments(list));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'שגיאת טעינה';
+      setError(`טעינת פילמנטים נכשלה: ${msg}`);
+      setFilaments([]);
+    } finally {
+      setListLoading(false);
+    }
+  }, [db]);
+
+  useEffect(() => {
+    void loadFilaments();
+  }, [loadFilaments]);
+
+  const searched = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return filaments;
+    return filaments.filter(
+      (f) =>
+        f.name.toLowerCase().includes(q) ||
+        f.colorName.toLowerCase().includes(q) ||
+        f.materialType.toLowerCase().includes(q) ||
+        f.id.toLowerCase().includes(q),
+    );
+  }, [filaments, search]);
+
+  const displayedRows = useMemo(() => {
+    const list = [...searched];
+    if (sortMode === 'manual') {
+      return list.sort((a, b) => a.sortOrder - b.sortOrder);
+    }
+    if (sortMode === 'name-asc') {
+      return list.sort((a, b) => a.name.localeCompare(b.name, 'he'));
+    }
+    return list.sort((a, b) => b.name.localeCompare(a.name, 'he'));
+  }, [searched, sortMode]);
+
+  const canReorder = sortMode === 'manual' && search.trim() === '';
+
+  function cycleSortMode() {
+    setSortMode((m) => (m === 'manual' ? 'name-asc' : m === 'name-asc' ? 'name-desc' : 'manual'));
+  }
+
+  async function persistSortOrders(ordered: Filament[]) {
+    setOrderingBusy(true);
+    setError(null);
+    try {
+      const batch = writeBatch(db);
+      ordered.forEach((f, index) => {
+        batch.update(doc(db, FILAMENTS_COLLECTION, f.id), {
+          sortOrder: index,
+          updatedAt: serverTimestamp(),
+        });
+      });
+      await batch.commit();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'שמירת סדר נכשלה';
+      setError(msg);
+      await loadFilaments();
+    } finally {
+      setOrderingBusy(false);
+    }
+  }
+
+  function handleDropRow(fromId: string, toId: string) {
+    if (!canReorder || fromId === toId) return;
+    const list = [...displayedRows];
+    const fromIndex = list.findIndex((x) => x.id === fromId);
+    const toIndex = list.findIndex((x) => x.id === toId);
+    if (fromIndex < 0 || toIndex < 0) return;
+    const reordered = reorderArray(list, fromIndex, toIndex);
+    const withOrder = reordered.map((item, i) => ({ ...item, sortOrder: i }));
+    const orderMap = new Map(withOrder.map((f) => [f.id, f.sortOrder]));
+    setFilaments((prev) =>
+      sortFilaments(prev.map((p) => (orderMap.has(p.id) ? { ...p, sortOrder: orderMap.get(p.id)! } : p))),
+    );
+    void persistSortOrders(withOrder);
+  }
 
   const stats = useMemo(() => {
-    const total = filaments.length;
-    const active = filaments.filter((f) => f.isActive).length;
-    const available = filaments.filter((f) => f.available).length;
-
-    return {
-      total,
-      active,
-      available,
-      hidden: total - available,
-      inactive: total - active,
-    };
+    const activeColors = filaments.filter((f) => f.isActive).length;
+    const totalRolls = filaments.reduce((s, f) => s + (f.rollQuantity ?? 0), 0);
+    const lowAlerts = filaments.filter((f) => (f.rollQuantity ?? 0) <= 1).length;
+    return { activeColors, totalRolls, lowAlerts };
   }, [filaments]);
 
-  function updateForm<K extends keyof FilamentFormState>(key: K, value: FilamentFormState[K]) {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  }
+  const drawerOpen = drawer !== null && form !== null;
 
-  function updateEditingForm<K extends keyof FilamentFormState>(key: K, value: FilamentFormState[K]) {
-    setEditingForm((prev) => (prev ? { ...prev, [key]: value } : prev));
-  }
-
-  async function requestPatch(id: string, patch: UpdateFilamentInput) {
-    const res = await fetch(`/api/admin/filaments/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(patch),
-    });
-
-    if (!res.ok) throw new Error('PATCH_FAILED');
-    return res.json() as Promise<Filament>;
-  }
-
-  async function createFilament() {
-    const validationError = validateFilamentForm(form);
+  const closeDrawer = useCallback(() => {
+    setDrawer(null);
+    setForm(null);
     setError(null);
+  }, []);
 
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
+  useEffect(() => {
+    document.body.style.overflow = drawerOpen ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [drawerOpen]);
 
-    setIsCreating(true);
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeDrawer();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [drawerOpen, closeDrawer]);
 
-    try {
-      const payload = buildCreatePayload(form);
-      const res = await fetch('/api/admin/filaments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+  function updateForm<K extends keyof FilamentFormState>(key: K, value: FilamentFormState[K]) {
+    setForm((prev) => (prev ? { ...prev, [key]: value } : prev));
+  }
 
-      if (!res.ok) throw new Error('CREATE_FAILED');
-
-      const created: Filament = await res.json();
-      setFilaments((prev) => sortFilaments([...prev, created]));
-      setForm(EMPTY_FORM);
-    } catch {
-      setError('יצירת הפילמנט נכשלה. נסו שוב בעוד רגע.');
-    } finally {
-      setIsCreating(false);
+  async function refreshDoc(id: string) {
+    const snap = await getDoc(doc(db, FILAMENTS_COLLECTION, id));
+    if (!snap.exists()) return;
+    const next = supplyDocToFilament(id, snap.data() as Record<string, unknown>);
+    if (next) {
+      setFilaments((prev) => sortFilaments(prev.map((f) => (f.id === id ? next : f))));
     }
   }
 
   async function patchFilament(id: string, patch: UpdateFilamentInput) {
     setLoadingId(id);
     setError(null);
-
     try {
-      const updated = await requestPatch(id, patch);
-      setFilaments((prev) => sortFilaments(prev.map((f) => (f.id === updated.id ? updated : f))));
-
-      if (editingId === id) {
-        setEditingForm(buildFormFromFilament(updated));
+      const ref = doc(db, FILAMENTS_COLLECTION, id);
+      await updateDoc(ref, buildUpdatePayload(patch));
+      await refreshDoc(id);
+      if (form && drawer?.mode === 'edit' && drawer.id === id) {
+        const snap = await getDoc(ref);
+        const updated = supplyDocToFilament(id, snap.data() as Record<string, unknown>);
+        if (updated) setForm(buildFormFromFilament(updated));
       }
-    } catch {
-      setError('עדכון הפילמנט נכשל. נסו שוב.');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'עדכון נכשל';
+      setError(msg);
     } finally {
       setLoadingId(null);
     }
   }
 
-  async function saveEditing() {
-    if (!editingId || !editingForm) return;
+  async function adjustRollQuantity(id: string, delta: number) {
+    const f = filaments.find((x) => x.id === id);
+    if (!f) return;
+    const next = Math.max(0, f.rollQuantity + delta);
+    const patch: UpdateFilamentInput = { rollQuantity: next };
+    if (next === 0) {
+      patch.available = false;
+    } else if (f.rollQuantity === 0 && delta > 0) {
+      patch.available = true;
+    }
+    await patchFilament(id, patch);
+  }
 
-    const validationError = validateFilamentForm(editingForm);
-    if (validationError) {
-      setError(validationError);
+  function openCreate() {
+    setError(null);
+    setForm({
+      colorName: '',
+      hexColor: '#FFFFFF',
+      materialType: 'PLA',
+      rollQuantity: 1,
+      isSportColor: false,
+      isActive: true,
+    });
+    setDrawer({ mode: 'create' });
+  }
+
+  function openEdit(f: Filament) {
+    setError(null);
+    setForm(buildFormFromFilament(f));
+    setDrawer({ mode: 'edit', id: f.id });
+  }
+
+  async function saveDrawer() {
+    if (!form || !drawer) return;
+    const err = validateForm(form);
+    if (err) {
+      setError(err);
       return;
     }
-
-    await patchFilament(editingId, buildUpdatePayload(editingForm));
-  }
-
-  async function moveSort(id: string, direction: -1 | 1) {
-    const ordered = sortFilaments(filaments);
-    const idx = ordered.findIndex((f) => f.id === id);
-    const swapIdx = idx + direction;
-
-    if (idx < 0 || swapIdx < 0 || swapIdx >= ordered.length) return;
-
-    const current = ordered[idx]!;
-    const swapWith = ordered[swapIdx]!;
-
-    setLoadingId(id);
+    setSaving(true);
     setError(null);
+    const label = form.colorName.trim();
+    const hex = form.hexColor.trim().toUpperCase();
 
     try {
-      const [updatedCurrent, updatedSwap] = await Promise.all([
-        requestPatch(current.id, { sortOrder: swapWith.sortOrder }),
-        requestPatch(swapWith.id, { sortOrder: current.sortOrder }),
-      ]);
+      if (drawer.mode === 'create') {
+        const newId = newFilamentId();
+        const rolls = form.rollQuantity;
+        await setDoc(doc(db, FILAMENTS_COLLECTION, newId), {
+          name: label,
+          colorName: label,
+          hexColor: hex,
+          materialType: form.materialType,
+          available: computeAvailableForSave(form, null, true),
+          sortOrder: filaments.length,
+          priceModifier: 0,
+          isActive: form.isActive,
+          quantity: rolls,
+          isSportColor: form.isSportColor,
+          stockStatus: deriveStockStatusFromRolls(rolls),
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        const prev = filaments.find((x) => x.id === drawer.id) ?? null;
+        const rolls = form.rollQuantity;
+        await updateDoc(doc(db, FILAMENTS_COLLECTION, drawer.id), {
+          name: label,
+          colorName: label,
+          hexColor: hex,
+          materialType: form.materialType,
+          quantity: rolls,
+          isSportColor: form.isSportColor,
+          isActive: form.isActive,
+          available: computeAvailableForSave(form, prev, false),
+          stockStatus: deriveStockStatusFromRolls(rolls),
+          updatedAt: serverTimestamp(),
+        });
+      }
+      closeDrawer();
+      await loadFilaments();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'שמירה נכשלה';
+      setError(msg);
+    } finally {
+      setSaving(false);
+    }
+  }
 
-      setFilaments((prev) =>
-        sortFilaments(
-          prev.map((filament) => {
-            if (filament.id === updatedCurrent.id) return updatedCurrent;
-            if (filament.id === updatedSwap.id) return updatedSwap;
-            return filament;
-          }),
-        ),
-      );
-    } catch {
-      setError('שינוי סדר התצוגה נכשל. נסו שוב.');
+  async function deleteFilament(id: string) {
+    if (!window.confirm('למחוק פילמנט זה?')) return;
+    setLoadingId(id);
+    setError(null);
+    try {
+      await deleteDoc(doc(db, FILAMENTS_COLLECTION, id));
+      setFilaments((prev) => prev.filter((f) => f.id !== id));
+      if (drawer?.mode === 'edit' && drawer.id === id) closeDrawer();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'מחיקה נכשלה';
+      setError(msg);
     } finally {
       setLoadingId(null);
     }
   }
 
-  function startEditing(filament: Filament) {
-    setEditingId(filament.id);
-    setEditingForm(buildFormFromFilament(filament));
-    setError(null);
-  }
-
-  function stopEditing() {
-    setEditingId(null);
-    setEditingForm(null);
-  }
+  const isCreate = drawer?.mode === 'create';
 
   return (
-    <div className="animate-fade-in space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-foreground">ניהול פילמנטים</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-            מסך ניהול מרוכז לעדכון צבעים, חומרים, זמינות וסדר תצוגה. כל פילמנט מוצג ככרטיס נוח לסריקה, עריכה ושינוי סטטוס מהיר.
-          </p>
-        </div>
-        <div className="rounded-2xl border border-border bg-white px-4 py-3 shadow-sm">
-          <p className="text-xs font-semibold text-muted">פילמנטים מנוהלים</p>
-          <p className="mt-1 text-2xl font-extrabold text-foreground">{stats.total}</p>
-        </div>
+    <div className="animate-fade-in space-y-6" dir="rtl">
+      <div>
+        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">ניהול פילמנטים</h1>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+          נתונים בקולקציית <span dir="ltr">filaments</span> — עדכונים ישירים ב-Firestore.
+        </p>
       </div>
 
       {error ? (
@@ -456,523 +666,399 @@ export function FilamentsClient({ initialFilaments }: Props) {
         </div>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <DashboardStatCard
-          label="סה״כ פילמנטים"
-          value={stats.total}
-          description="כל הפריטים שמנוהלים כיום בקטלוג הייצור."
-          accentClass="bg-blue-50 text-primary"
-          icon={(
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75 2.25 12l4.179 2.25m0-4.5 5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L12 12.75l-5.571-3m11.142 0L21.75 12l-4.179 2.25m0 0L12 17.25l-5.571-3m11.142 0L21.75 16.5 12 21.75 2.25 16.5l4.179-2.25" />
-            </svg>
-          )}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatCard
+          label='סה"כ צבעים פעילים'
+          value={stats.activeColors}
+          sub="מסומנים כפעילים במערכת"
+          accent="bg-slate-900 text-white"
         />
-        <DashboardStatCard
-          label="פילמנטים פעילים"
-          value={stats.active}
-          description={`${formatRelativeCount(stats.active, stats.total)} מהקטלוג מסומנים כפעילים לניהול ולהזמנות.`}
-          accentClass="bg-emerald-50 text-success"
-          icon={(
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-            </svg>
-          )}
+        <StatCard
+          label="גלילים במלאי"
+          value={stats.totalRolls}
+          sub="סכום כל הגלילים בקטלוג"
+          accent="bg-primary/15 text-primary"
         />
-        <DashboardStatCard
-          label="זמינים ללקוחות"
-          value={stats.available}
-          description={`${stats.hidden} פילמנטים מוסתרים כרגע מאזור הבחירה של הלקוחות.`}
-          accentClass="bg-purple-50 text-secondary"
-          icon={(
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12S5.25 5.25 12 5.25 21.75 12 21.75 12 18.75 18.75 12 18.75 2.25 12 2.25 12Z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 15.75a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Z" />
-            </svg>
-          )}
+        <StatCard
+          label="התראות מלאי"
+          value={stats.lowAlerts}
+          sub="פריטים עם ≤ 1 גליל"
+          accent="bg-amber-100 text-amber-900"
         />
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.75fr)]">
-        <SectionCard
-          title="יצירת פילמנט חדש"
-          description="טופס מובנה ליצירת חומר או צבע חדש, עם חלוקה ברורה בין זיהוי, מאפייני צבע, תמחור וסטטוס."
-          actions={
-            <span className="rounded-full bg-primary/8 px-3 py-1 text-xs font-semibold text-primary">
-              יצירה מהירה
-            </span>
-          }
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative max-w-xl flex-1">
+          <Search
+            className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+            strokeWidth={1.8}
+          />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="חיפוש לפי שם, חומר או מזהה..."
+            className={`${INPUT_CLASS} pr-10`}
+          />
+        </div>
+        <button
+          type="button"
+          onClick={openCreate}
+          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-slate-800"
         >
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="rounded-3xl border border-border bg-muted-bg/35 p-4 sm:p-5">
-              <h3 className="text-sm font-bold text-foreground">פרטי זיהוי ותצוגה</h3>
-              <div className="mt-4 grid gap-4">
-                <Field label="מזהה פנימי" hint="למערכת">
-                  <input
-                    className={INPUT_CLASS}
-                    dir="ltr"
-                    placeholder="pla-white-matte"
-                    value={form.id}
-                    onChange={(e) => updateForm('id', e.target.value)}
-                  />
-                </Field>
-                <Field label="שם תצוגה" hint="מופיע לצוות">
-                  <input
-                    className={INPUT_CLASS}
-                    placeholder="לבן מט"
-                    value={form.name}
-                    onChange={(e) => updateForm('name', e.target.value)}
-                  />
-                </Field>
-                <Field label="שם צבע" hint="לתיאור מהיר">
-                  <input
-                    className={INPUT_CLASS}
-                    placeholder="לבן"
-                    value={form.colorName}
-                    onChange={(e) => updateForm('colorName', e.target.value)}
-                  />
-                </Field>
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-border bg-muted-bg/35 p-4 sm:p-5">
-              <h3 className="text-sm font-bold text-foreground">צבע וחומר</h3>
-              <div className="mt-4 space-y-4">
-                <ColorSwatch
-                  hexColor={form.hexColor}
-                  title={form.name.trim() || 'תצוגת צבע'}
-                  subtitle={form.colorName.trim() || 'בחרו גוון והגדירו שם ברור'}
-                />
-                <div className="grid gap-4 sm:grid-cols-[120px_minmax(0,1fr)]">
-                  <Field label="בורר צבע">
-                    <input
-                      className="h-12 w-full cursor-pointer rounded-2xl border border-border bg-white p-1"
-                      type="color"
-                      value={isValidHexColor(form.hexColor) ? form.hexColor : '#FFFFFF'}
-                      onChange={(e) => updateForm('hexColor', e.target.value.toUpperCase())}
-                    />
-                  </Field>
-                  <Field label="קוד HEX" hint="לדוגמה #FFFFFF">
-                    <input
-                      className={INPUT_CLASS}
-                      dir="ltr"
-                      value={form.hexColor}
-                      onChange={(e) => {
-                        const nextValue = normalizeHexInput(e.target.value);
-                        if (nextValue !== null) updateForm('hexColor', nextValue.toUpperCase());
-                      }}
-                    />
-                  </Field>
-                </div>
-                <Field label="סוג חומר">
-                  <select
-                    className={INPUT_CLASS}
-                    value={form.materialType}
-                    onChange={(e) => updateForm('materialType', e.target.value as FilamentMaterial)}
-                  >
-                    {MATERIALS.map((material) => (
-                      <option key={material} value={material}>
-                        {material}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-border bg-muted-bg/35 p-4 sm:p-5">
-              <h3 className="text-sm font-bold text-foreground">סדר ותמחור</h3>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                <Field label="סדר תצוגה">
-                  <input
-                    className={INPUT_CLASS}
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={form.sortOrder}
-                    onChange={(e) => updateForm('sortOrder', Number(e.target.value))}
-                  />
-                </Field>
-                <Field label="תוספת מחיר" hint="בשקלים">
-                  <input
-                    className={INPUT_CLASS}
-                    type="number"
-                    step={1}
-                    value={form.priceModifier}
-                    onChange={(e) => updateForm('priceModifier', Number(e.target.value))}
-                  />
-                </Field>
-              </div>
-              <div className="mt-4 rounded-2xl border border-border bg-white px-4 py-3 text-sm">
-                <p className="text-xs font-semibold text-muted">תצוגה מהירה</p>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-muted-bg px-3 py-1 text-xs font-semibold text-foreground">
-                    סדר #{form.sortOrder}
-                  </span>
-                  <span className="rounded-full bg-muted-bg px-3 py-1 text-xs font-semibold text-foreground">
-                    {formatPriceModifier(form.priceModifier)}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-border bg-muted-bg/35 p-4 sm:p-5">
-              <h3 className="text-sm font-bold text-foreground">נראות וסטטוס</h3>
-              <div className="mt-4 space-y-3">
-                <StatusToggle
-                  label="זמין ללקוחות"
-                  description="מופיע ללקוחות בבחירת הצבעים והחומרים."
-                  checked={form.available}
-                  onToggle={(nextValue) => updateForm('available', nextValue)}
-                />
-                <StatusToggle
-                  label="פעיל במערכת"
-                  description="נשמר כפריט פעיל לניהול, תמחור ושימוש."
-                  checked={form.isActive}
-                  onToggle={(nextValue) => updateForm('isActive', nextValue)}
-                />
-                <Field label="הערות פנימיות" hint="אופציונלי">
-                  <textarea
-                    className={`${INPUT_CLASS} min-h-[108px] resize-y`}
-                    placeholder="למשל: מתאים להזמנות פרימיום או דורש בדיקת מלאי מיוחדת"
-                    value={form.notes}
-                    onChange={(e) => updateForm('notes', e.target.value)}
-                  />
-                </Field>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-border bg-gray-950 px-4 py-4 text-white">
-            <div>
-              <p className="text-sm font-bold">הוספת פילמנט חדש לקטלוג</p>
-              <p className="mt-1 text-xs text-gray-300">
-                ההגדרות יישמרו מיד ויופיעו ברשימת הניהול עם כל פעולות העריכה והסידור.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={createFilament}
-              disabled={isCreating}
-              className="inline-flex items-center justify-center rounded-2xl bg-primary px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isCreating ? 'יוצר...' : 'יצירת פילמנט'}
-            </button>
-          </div>
-        </SectionCard>
-
-        <SectionCard
-          title="תמונת מצב מהירה"
-          description="סקירה קצרה של סטטוס הקטלוג כדי לזהות במהירות מה חסר, מה מוסתר ומה דורש טיפול."
-        >
-          <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-              <div className="rounded-3xl border border-border bg-muted-bg/50 p-4">
-                <p className="text-xs font-semibold text-muted">מוסתרים מלקוחות</p>
-                <p className="mt-2 text-2xl font-extrabold text-foreground">{stats.hidden}</p>
-                <p className="mt-1 text-xs text-muted">פריטים שלא מוצגים כרגע בבחירת הלקוחות.</p>
-              </div>
-              <div className="rounded-3xl border border-border bg-muted-bg/50 p-4">
-                <p className="text-xs font-semibold text-muted">לא פעילים</p>
-                <p className="mt-2 text-2xl font-extrabold text-foreground">{stats.inactive}</p>
-                <p className="mt-1 text-xs text-muted">פריטים שמנוהלים אך אינם מסומנים כפעילים.</p>
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-border bg-gradient-to-br from-primary/5 via-white to-secondary/5 p-5">
-              <h3 className="text-sm font-bold text-foreground">פירוש הסטטוסים</h3>
-              <div className="mt-4 space-y-3">
-                <div className="rounded-2xl border border-border bg-white/80 px-4 py-3">
-                  <p className="text-sm font-semibold text-foreground">פעיל במערכת</p>
-                  <p className="mt-1 text-xs leading-5 text-muted">
-                    מגדיר אם הפילמנט נחשב פעיל לניהול, שימוש פנימי ותמחור.
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-border bg-white/80 px-4 py-3">
-                  <p className="text-sm font-semibold text-foreground">זמין ללקוחות</p>
-                  <p className="mt-1 text-xs leading-5 text-muted">
-                    שולט אם הלקוחות יכולים לבחור את הפילמנט בממשק ההזמנה.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </SectionCard>
+          <Plus className="h-4 w-4" strokeWidth={2.2} />
+          הוסף פילמנט חדש
+        </button>
       </div>
 
-      <SectionCard
-        title="רשימת פילמנטים"
-        description="כרטיסי ניהול ברורים לעריכה מהירה, שינוי סטטוסים וסידור לפי סדר תצוגה."
-        actions={
-          <span className="rounded-full bg-muted-bg px-3 py-1 text-xs font-semibold text-foreground">
-            מסודר לפי סדר תצוגה
-          </span>
-        }
-      >
-        {filaments.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-border bg-muted-bg/35 px-6 py-14 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-sm">
-              <svg className="h-6 w-6 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.7}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-            </div>
-            <p className="mt-4 text-sm font-semibold text-foreground">עדיין לא נוספו פילמנטים לקטלוג</p>
-            <p className="mt-2 text-sm text-muted">צרו פילמנט חדש מהטופס למעלה כדי להתחיל לנהל את הקטלוג.</p>
+      <section className="rounded-[22px] border border-slate-200 bg-white shadow-sm">
+        {listLoading ? (
+          <div className="px-6 py-16 text-center text-muted">
+            <p className="text-sm">טוען נתונים מ־filaments…</p>
+          </div>
+        ) : filaments.length === 0 ? (
+          <div className="px-6 py-16 text-center text-muted">
+            <p className="font-semibold text-foreground">אין רשומות ב־filaments</p>
+            <p className="mt-2 text-sm">הוסיפו צבע חדש מהכפתור למעלה.</p>
+          </div>
+        ) : displayedRows.length === 0 ? (
+          <div className="px-6 py-16 text-center text-muted">
+            <p className="font-semibold text-foreground">לא נמצאו תוצאות</p>
           </div>
         ) : (
-          <div className="grid gap-4 xl:grid-cols-2">
-            {filaments.map((filament, index) => {
-              const isEditing = editingId === filament.id && editingForm !== null;
-              const isLoading = loadingId === filament.id;
-
-              return (
-                <article
-                  key={filament.id}
-                  className={`rounded-[28px] border border-border bg-white p-5 shadow-sm transition-all ${
-                    isLoading ? 'opacity-70' : 'hover:-translate-y-0.5 hover:shadow-md'
-                  }`}
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <ColorSwatch
-                        hexColor={filament.hexColor}
-                        title={filament.name}
-                        subtitle={`${filament.colorName} • ${filament.materialType}`}
-                      />
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full bg-muted-bg px-3 py-1 text-xs font-bold text-foreground">
-                        סדר #{index + 1}
-                      </span>
-                      <ActionButton
-                        label="למעלה"
-                        disabled={isLoading || index === 0}
-                        onClick={() => moveSort(filament.id, -1)}
-                        icon={(
-                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="m18 15-6-6-6 6" />
-                          </svg>
-                        )}
-                      />
-                      <ActionButton
-                        label="למטה"
-                        disabled={isLoading || index === filaments.length - 1}
-                        onClick={() => moveSort(filament.id, 1)}
-                        icon={(
-                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
-                          </svg>
-                        )}
-                      />
-                      <ActionButton
-                        label={isEditing ? 'סגור עריכה' : 'עריכה'}
-                        disabled={isLoading}
-                        onClick={() => (isEditing ? stopEditing() : startEditing(filament))}
-                        icon={(
-                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 7.125 16.875 4.5" />
-                          </svg>
-                        )}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap items-center gap-2">
-                    <FilamentStatusBadge
-                      active={filament.isActive}
-                      activeLabel="פעיל"
-                      inactiveLabel="לא פעיל"
-                      activeClass="bg-emerald-50 text-emerald-700"
-                      inactiveClass="bg-gray-100 text-gray-600"
-                    />
-                    <FilamentStatusBadge
-                      active={filament.available}
-                      activeLabel="גלוי ללקוחות"
-                      inactiveLabel="מוסתר מלקוחות"
-                      activeClass="bg-blue-50 text-blue-700"
-                      inactiveClass="bg-amber-50 text-amber-700"
-                    />
-                    <span className="rounded-full bg-muted-bg px-2.5 py-1 text-[11px] font-bold text-foreground">
-                      {formatPriceModifier(filament.priceModifier ?? 0)}
-                    </span>
-                  </div>
-
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-2xl border border-border bg-muted-bg/35 p-3.5">
-                      <p className="text-[11px] font-semibold text-muted">מזהה פנימי</p>
-                      <p className="mt-1 font-mono text-sm font-bold text-foreground" dir="ltr">
-                        {filament.id}
-                      </p>
-                    </div>
-                    <div className="rounded-2xl border border-border bg-muted-bg/35 p-3.5">
-                      <p className="text-[11px] font-semibold text-muted">סדר תצוגה</p>
-                      <p className="mt-1 text-sm font-bold text-foreground">#{filament.sortOrder}</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 grid gap-3 xl:grid-cols-2">
-                    <StatusToggle
-                      label="זמין ללקוחות"
-                      description={filament.available ? 'מוצג כרגע בתהליך ההזמנה.' : 'מוסתר כרגע ממסך הלקוח.'}
-                      checked={filament.available}
-                      disabled={isLoading}
-                      onToggle={(nextValue) => patchFilament(filament.id, { available: nextValue })}
-                    />
-                    <StatusToggle
-                      label="פעיל במערכת"
-                      description={filament.isActive ? 'זמין לשימוש וניהול פנימי.' : 'מסומן כלא פעיל כרגע.'}
-                      checked={filament.isActive}
-                      disabled={isLoading}
-                      onToggle={(nextValue) => patchFilament(filament.id, { isActive: nextValue })}
-                    />
-                  </div>
-
-                  {filament.notes ? (
-                    <div className="mt-4 rounded-2xl border border-border bg-muted-bg/35 px-4 py-3">
-                      <p className="text-[11px] font-semibold text-muted">הערה פנימית</p>
-                      <p className="mt-1 text-sm leading-6 text-foreground">{filament.notes}</p>
-                    </div>
-                  ) : null}
-
-                  {isEditing && editingForm ? (
-                    <div className="mt-5 rounded-3xl border border-primary/15 bg-primary/5 p-4 sm:p-5">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div>
-                          <h3 className="text-sm font-extrabold text-foreground">עריכת פילמנט</h3>
-                          <p className="mt-1 text-xs text-muted">עדכון מרוכז של השדות העיקריים, הסטטוסים והתצוגה.</p>
-                        </div>
-                        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-primary">
-                          {filament.id}
+          <div className="overflow-x-auto overflow-y-visible">
+            <table className="w-full min-w-[920px] border-collapse text-right text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50/90 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                  <th className="w-11 p-2 text-center align-middle" aria-label="גרירה לסידור" />
+                  <th className="p-4 text-center align-middle">צבע</th>
+                  <th className="p-4 text-right align-middle">
+                    <button
+                      type="button"
+                      onClick={cycleSortMode}
+                      className="inline-flex items-center gap-1.5 rounded-lg px-1 py-0.5 text-[11px] font-bold uppercase tracking-wide text-slate-500 transition-colors hover:bg-slate-200/80 hover:text-slate-800"
+                      title="מיון: ידני / א-ת / ת-א"
+                    >
+                      שם וגוון
+                      {sortMode === 'manual' ? (
+                        <ArrowUpDown className="h-3.5 w-3.5 shrink-0 text-slate-500" strokeWidth={2.2} />
+                      ) : sortMode === 'name-asc' ? (
+                        <ArrowUp className="h-3.5 w-3.5 shrink-0 text-slate-500" strokeWidth={2.2} />
+                      ) : (
+                        <ArrowDown className="h-3.5 w-3.5 shrink-0 text-slate-500" strokeWidth={2.2} />
+                      )}
+                    </button>
+                  </th>
+                  <th className="p-4 text-center align-middle">חומר</th>
+                  <th className="p-4 text-center align-middle">מלאי</th>
+                  <th className="p-4 text-center align-middle">מודלו ספורט</th>
+                  <th className="p-4 text-center align-middle">גלוי ללקוחות</th>
+                  <th className="p-4 text-center align-middle">פעולות</th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayedRows.map((f) => {
+                  const loading = loadingId === f.id || orderingBusy;
+                  const hex = isValidHexColor(f.hexColor) ? f.hexColor : '#E2E8F0';
+                  const rolls = f.rollQuantity ?? 0;
+                  const out = rolls === 0;
+                  const isDragOver = canReorder && dragOverId === f.id && draggingId && draggingId !== f.id;
+                  return (
+                    <tr
+                      key={f.id}
+                      className={`border-b border-slate-100 hover:bg-slate-50 ${loading ? 'opacity-60' : ''} ${
+                        draggingId === f.id ? 'opacity-50' : ''
+                      } ${isDragOver ? 'bg-blue-50/80 ring-1 ring-inset ring-blue-200' : ''}`}
+                      onDragOver={(e) => {
+                        if (!canReorder || !draggingId) return;
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                        if (draggingId !== f.id) setDragOverId(f.id);
+                      }}
+                      onDrop={(e) => {
+                        if (!canReorder) return;
+                        e.preventDefault();
+                        const fromId = e.dataTransfer.getData('text/plain');
+                        setDragOverId(null);
+                        handleDropRow(fromId, f.id);
+                      }}
+                    >
+                      <td className="w-11 p-2 align-middle text-center">
+                        <span
+                          data-drag-handle
+                          draggable={canReorder}
+                          onDragStart={(e) => {
+                            if (!canReorder) return;
+                            e.stopPropagation();
+                            e.dataTransfer.setData('text/plain', f.id);
+                            e.dataTransfer.effectAllowed = 'move';
+                            setDraggingId(f.id);
+                          }}
+                          onDragEnd={() => {
+                            setDraggingId(null);
+                            setDragOverId(null);
+                          }}
+                          className={`inline-flex rounded-md p-1 ${
+                            canReorder
+                              ? 'cursor-grab text-slate-300 hover:text-slate-500 active:cursor-grabbing'
+                              : 'cursor-not-allowed text-slate-200 opacity-50'
+                          }`}
+                          title={canReorder ? 'גרור לשינוי סדר' : 'מיון לפי שם או חיפוש — גרירה לא זמינה'}
+                        >
+                          <GripVertical className="h-5 w-5" strokeWidth={2} />
                         </span>
-                      </div>
-
-                      <div className="mt-4 grid gap-4 md:grid-cols-2">
-                        <Field label="שם תצוגה">
-                          <input
-                            className={INPUT_CLASS}
-                            value={editingForm.name}
-                            onChange={(e) => updateEditingForm('name', e.target.value)}
+                      </td>
+                      <td className="p-4 align-middle">
+                        <div className="flex justify-center">
+                          <div
+                            className="h-10 w-10 rounded-full border border-white shadow-sm ring-1 ring-slate-200/80"
+                            style={{ backgroundColor: hex }}
                           />
-                        </Field>
-                        <Field label="שם צבע">
-                          <input
-                            className={INPUT_CLASS}
-                            value={editingForm.colorName}
-                            onChange={(e) => updateEditingForm('colorName', e.target.value)}
-                          />
-                        </Field>
-                        <Field label="סוג חומר">
-                          <select
-                            className={INPUT_CLASS}
-                            value={editingForm.materialType}
-                            onChange={(e) => updateEditingForm('materialType', e.target.value as FilamentMaterial)}
-                          >
-                            {MATERIALS.map((material) => (
-                              <option key={material} value={material}>
-                                {material}
-                              </option>
-                            ))}
-                          </select>
-                        </Field>
-                        <Field label="קוד HEX">
-                          <input
-                            className={INPUT_CLASS}
-                            dir="ltr"
-                            value={editingForm.hexColor}
-                            onChange={(e) => {
-                              const nextValue = normalizeHexInput(e.target.value);
-                              if (nextValue !== null) updateEditingForm('hexColor', nextValue.toUpperCase());
-                            }}
-                          />
-                        </Field>
-                        <Field label="בורר צבע">
-                          <input
-                            className="h-12 w-full cursor-pointer rounded-2xl border border-border bg-white p-1"
-                            type="color"
-                            value={isValidHexColor(editingForm.hexColor) ? editingForm.hexColor : '#FFFFFF'}
-                            onChange={(e) => updateEditingForm('hexColor', e.target.value.toUpperCase())}
-                          />
-                        </Field>
-                        <Field label="סדר תצוגה">
-                          <input
-                            className={INPUT_CLASS}
-                            type="number"
-                            min={0}
-                            step={1}
-                            value={editingForm.sortOrder}
-                            onChange={(e) => updateEditingForm('sortOrder', Number(e.target.value))}
-                          />
-                        </Field>
-                        <Field label="תוספת מחיר" hint="בשקלים">
-                          <input
-                            className={INPUT_CLASS}
-                            type="number"
-                            step={1}
-                            value={editingForm.priceModifier}
-                            onChange={(e) => updateEditingForm('priceModifier', Number(e.target.value))}
-                          />
-                        </Field>
-                        <div className="md:col-span-2">
-                          <Field label="הערות פנימיות" hint="אופציונלי">
-                            <textarea
-                              className={`${INPUT_CLASS} min-h-[96px] resize-y`}
-                              value={editingForm.notes}
-                              onChange={(e) => updateEditingForm('notes', e.target.value)}
-                            />
-                          </Field>
                         </div>
-                      </div>
-
-                      <div className="mt-4 grid gap-3 xl:grid-cols-2">
-                        <StatusToggle
-                          label="זמין ללקוחות"
-                          description="שליטה ישירה על הנראות מול הלקוחות."
-                          checked={editingForm.available}
-                          disabled={isLoading}
-                          onToggle={(nextValue) => updateEditingForm('available', nextValue)}
+                      </td>
+                      <td className="p-4 align-middle">
+                        <p className="font-bold text-slate-900">{f.name}</p>
+                        <p className="font-mono text-[10px] text-slate-400" dir="ltr">
+                          {f.id}
+                        </p>
+                      </td>
+                      <td className="p-4 align-middle text-center font-semibold text-slate-700">
+                        {f.materialType}
+                      </td>
+                      <td className="p-4 align-middle">
+                        <div className="flex flex-col items-center justify-center gap-1">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              type="button"
+                              disabled={loading}
+                              onClick={() => adjustRollQuantity(f.id, -1)}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-40"
+                              aria-label="הפחת גליל"
+                            >
+                              <Minus className="h-4 w-4" strokeWidth={2.2} />
+                            </button>
+                            <span className="min-w-[2rem] text-center text-base font-extrabold tabular-nums text-slate-900">
+                              {rolls}
+                            </span>
+                            <button
+                              type="button"
+                              disabled={loading}
+                              onClick={() => adjustRollQuantity(f.id, 1)}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-40"
+                              aria-label="הוסף גליל"
+                            >
+                              <Plus className="h-4 w-4" strokeWidth={2.2} />
+                            </button>
+                          </div>
+                          {out ? (
+                            <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-700 ring-1 ring-red-100">
+                              אזל המלאי
+                            </span>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td className="overflow-visible p-4 align-middle">
+                        <TableToggle
+                          checked={f.isSportColor}
+                          disabled={loading}
+                          ariaLabel="מודלו ספורט"
+                          onChange={(v) => patchFilament(f.id, { isSportColor: v })}
                         />
-                        <StatusToggle
-                          label="פעיל במערכת"
-                          description="הגדרה אם הפילמנט פעיל לשימוש וניהול."
-                          checked={editingForm.isActive}
-                          disabled={isLoading}
-                          onToggle={(nextValue) => updateEditingForm('isActive', nextValue)}
+                      </td>
+                      <td className="overflow-visible p-4 align-middle">
+                        <TableToggle
+                          checked={f.available && !out}
+                          disabled={loading || out}
+                          ariaLabel="גלוי ללקוחות"
+                          onChange={(v) => patchFilament(f.id, { available: v })}
                         />
-                      </div>
-
-                      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                        <ColorSwatch
-                          hexColor={editingForm.hexColor}
-                          title={editingForm.name || filament.name}
-                          subtitle={editingForm.colorName || 'ללא שם צבע'}
-                        />
-                        <div className="flex flex-wrap items-center gap-2">
+                      </td>
+                      <td className="p-4 align-middle">
+                        <div className="flex items-center justify-center gap-0.5">
                           <button
                             type="button"
-                            onClick={stopEditing}
-                            className="rounded-2xl border border-border bg-white px-4 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-muted-bg"
+                            disabled={loading}
+                            onClick={() => openEdit(f)}
+                            className="rounded-lg p-2.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                            aria-label="עריכה"
                           >
-                            ביטול
+                            <Pencil className="h-4 w-4" />
                           </button>
                           <button
                             type="button"
-                            onClick={saveEditing}
-                            disabled={isLoading}
-                            className="rounded-2xl bg-foreground px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+                            disabled={loading}
+                            onClick={() => deleteFilament(f.id)}
+                            className="rounded-lg p-2.5 text-red-600 hover:bg-red-50"
+                            aria-label="מחיקה"
                           >
-                            {isLoading ? 'שומר...' : 'שמירת שינויים'}
+                            <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
-                      </div>
-                    </div>
-                  ) : null}
-                </article>
-              );
-            })}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
-      </SectionCard>
+      </section>
+
+      {!listLoading && filaments.length > 0 ? (
+        <section className="rounded-[22px] border border-slate-200 bg-white p-6 shadow-sm md:p-8">
+          <div className="mb-6">
+            <h2 className="text-lg font-extrabold text-slate-900">התפלגות מלאי</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              כל פרוסה = כמות גלילים לאותו צבע (משדה <span dir="ltr">quantity</span> ב-Firestore)
+            </p>
+          </div>
+          <InventoryPieChart items={filaments} />
+        </section>
+      ) : null}
+
+      {portalReady &&
+        drawerOpen &&
+        form &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[100]"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="filament-drawer-title"
+          >
+            <div
+              className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
+              onClick={closeDrawer}
+              aria-hidden="true"
+            />
+            <aside
+              className="absolute top-0 right-0 z-10 flex h-full max-h-[100dvh] w-full max-w-md flex-col bg-white shadow-2xl"
+              dir="rtl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <header className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4">
+                <h2 id="filament-drawer-title" className="text-lg font-extrabold text-slate-900">
+                  {isCreate ? 'הוספת פילמנט חדש' : 'עריכת פילמנט'}
+                </h2>
+                <button
+                  type="button"
+                  onClick={closeDrawer}
+                  className="flex h-10 w-10 items-center justify-center rounded-xl hover:bg-slate-100"
+                  aria-label="סגור"
+                >
+                  <X className="h-5 w-5 text-slate-500" />
+                </button>
+              </header>
+
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-6">
+                  <div className="space-y-5">
+                    <Field label="שם הצבע">
+                      <input
+                        className={INPUT_CLASS}
+                        value={form.colorName}
+                        onChange={(e) => updateForm('colorName', e.target.value)}
+                        placeholder="למשל: לבן מט"
+                      />
+                    </Field>
+
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                      <DrawerHexColorField
+                        hexColor={form.hexColor}
+                        onHexChange={(v) => updateForm('hexColor', v)}
+                      />
+                    </div>
+
+                    <Field label="חומר">
+                      <select
+                        className={INPUT_CLASS}
+                        value={form.materialType}
+                        onChange={(e) => updateForm('materialType', e.target.value as FilamentMaterial)}
+                      >
+                        {MATERIALS.map((m) => (
+                          <option key={m} value={m}>
+                            {m}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+
+                    <Field label={isCreate ? 'כמות נכנסת (גלילים)' : 'כמות גלילים במלאי'}>
+                      <input
+                        className={INPUT_CLASS}
+                        dir="ltr"
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={form.rollQuantity}
+                        onChange={(e) =>
+                          updateForm('rollQuantity', Math.max(0, Math.floor(Number(e.target.value) || 0)))
+                        }
+                      />
+                    </Field>
+
+                    <DrawerSwitch
+                      label="זמין למודלו ספורט"
+                      description="מוצג כבחירת צבע מסגרת במחלקת הספורט."
+                      checked={form.isSportColor}
+                      onToggle={(v) => updateForm('isSportColor', v)}
+                    />
+                    <DrawerSwitch
+                      label="סטטוס פעיל"
+                      description="צבע לא פעיל לא יוצע ללקוחות גם אם יש מלאי."
+                      checked={form.isActive}
+                      onToggle={(v) => updateForm('isActive', v)}
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-auto flex shrink-0 justify-end gap-3 border-t border-slate-200 bg-white p-4 shadow-[0_-4px_16px_-8px_rgba(15,23,42,0.12)] sticky bottom-0 z-10">
+                  <button
+                    type="button"
+                    onClick={closeDrawer}
+                    className="rounded-2xl border border-slate-200 bg-white px-6 py-3 text-sm font-bold text-slate-800 hover:bg-slate-50"
+                  >
+                    ביטול
+                  </button>
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={saveDrawer}
+                    className="rounded-2xl bg-slate-900 px-8 py-3 text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-50"
+                  >
+                    {saving ? 'שומר...' : isCreate ? 'יצירה' : 'שמירה'}
+                  </button>
+                </div>
+              </div>
+            </aside>
+          </div>,
+          document.body,
+        )}
+    </div>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  sub,
+  accent,
+}: {
+  label: string;
+  value: number;
+  sub: string;
+  accent: string;
+}) {
+  return (
+    <div className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-sm">
+      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</p>
+      <div className="mt-3 flex items-end justify-between gap-2">
+        <p className="text-3xl font-extrabold tabular-nums text-slate-900">{value}</p>
+        <span className={`flex h-10 w-10 items-center justify-center rounded-xl text-xs font-bold ${accent}`}>
+          ●
+        </span>
+      </div>
+      <p className="mt-2 text-xs text-slate-500">{sub}</p>
     </div>
   );
 }

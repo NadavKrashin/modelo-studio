@@ -3,6 +3,24 @@ import { getFilamentService } from '@/lib/services/container';
 import { parseBody } from '@/lib/validation/api-helpers';
 import { updateFilamentSchema } from '@/lib/validation';
 
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  try {
+    const service = getFilamentService();
+    const ok = await service.deleteFilament(id);
+    if (!ok) {
+      return NextResponse.json({ error: 'Filament not found' }, { status: 404 });
+    }
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error('[API] Admin filament delete error:', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },

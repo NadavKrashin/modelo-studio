@@ -33,6 +33,9 @@ export const FILAMENTS: Filament[] = FILAMENT_OPTIONS.map((opt) => ({
   material: opt.material,
   inStock: opt.inStock,
   isActive: true,
+  rollQuantity: opt.inStock ? 3 : 0,
+  stockStatus: opt.inStock ? 'in_stock' : 'out_of_stock',
+  isSportColor: false,
   createdAt: '2025-01-01T00:00:00Z',
   updatedAt: '2025-03-01T00:00:00Z',
 }));

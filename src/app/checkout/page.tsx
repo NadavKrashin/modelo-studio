@@ -3,15 +3,30 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { SafeCartItemImg } from '@/components/SafeCartItemImage';
+import { CouponInput } from '@/components/cart/CouponInput';
 import { useCartStore } from '@/lib/store';
+import { computeCartTotal, computeDiscountAmount } from '@/lib/store/cart-discount';
 import { formatPrice } from '@/lib/pricing';
 import type { CartItem, DeliveryMethod, FilamentOption } from '@/lib/types';
 import { DELIVERY_METHOD_LABELS } from '@/lib/types/order';
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, subtotal, totalItems } = useCartStore();
+  const items = useCartStore((s) => s.items);
+  const subtotal = useCartStore((s) => s.subtotal);
+  const appliedCoupon = useCartStore((s) => s.appliedCoupon);
+  const totalItems = useCartStore((s) => s.totalItems);
   const clearCart = useCartStore((s) => s.clearCart);
+
+  const discountAmount = useMemo(
+    () => computeDiscountAmount(subtotal, appliedCoupon),
+    [subtotal, appliedCoupon],
+  );
+  const cartTotalAfterDiscount = useMemo(
+    () => computeCartTotal(subtotal, appliedCoupon),
+    [subtotal, appliedCoupon],
+  );
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -22,6 +37,9 @@ export default function CheckoutPage() {
   const [customerNotes, setCustomerNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [availableFilaments, setAvailableFilaments] = useState<FilamentOption[]>([]);
+
+  const shippingCost = deliveryMethod === 'shipping' ? 35 : 0;
+  const orderGrandTotal = cartTotalAfterDiscount + shippingCost;
 
   const needsFilaments = useMemo(
     () => items.some((i) => i.kind === 'studio_model'),
@@ -63,6 +81,8 @@ export default function CheckoutPage() {
           items,
           deliveryMethod,
           notes: customerNotes,
+          discountAmount,
+          couponCode: appliedCoupon?.code,
         }),
       });
 
@@ -86,7 +106,7 @@ export default function CheckoutPage() {
     'w-full px-4 py-3 rounded-xl border border-border bg-white text-foreground placeholder-gray-400 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-all';
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in" dir="rtl">
       <div className="flex items-center justify-center gap-2 text-xs text-muted mb-8">
         <Link href="/cart" className="text-primary font-medium">
           סל
@@ -169,17 +189,18 @@ export default function CheckoutPage() {
                 <h2 className="font-bold text-foreground">סיכום</h2>
                 <span className="text-xs text-muted">{totalItems} פריטים</span>
               </div>
+              <CouponInput className="mb-4" />
               <div className="space-y-3 mb-4">
-                {items.map((item: CartItem) => (
+                {items.map((item: CartItem) => {
+                  const thumbUrl =
+                    item.kind === 'studio_model' ? item.thumbnailUrl : item.imageUrl;
+                  const thumbAlt =
+                    item.kind === 'studio_model' ? item.localizedModelName : item.title;
+                  return (
                   <div key={item.id} className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-xl bg-muted-bg overflow-hidden shrink-0 flex items-center justify-center">
-                      {(item.kind === 'studio_model' ? item.thumbnailUrl : item.imageUrl) ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={item.kind === 'studio_model' ? item.thumbnailUrl : item.imageUrl}
-                          alt={item.kind === 'studio_model' ? item.localizedModelName : item.title}
-                          className="w-full h-full object-cover"
-                        />
+                      {thumbUrl ? (
+                        <SafeCartItemImg key={`${item.id}-${thumbUrl}`} src={thumbUrl} alt={thumbAlt} />
                       ) : (
                         <span className="text-xs text-muted">—</span>
                       )}
@@ -197,13 +218,37 @@ export default function CheckoutPage() {
                       {formatPrice(item.subtotal)}
                     </span>
                   </div>
-                ))}
+                  );
+                })}
               </div>
-              <div className="border-t border-border pt-3 flex justify-between items-baseline">
-                <span className="font-bold text-foreground">סה&quot;כ</span>
-                <span className="text-xl font-extrabold text-primary">{formatPrice(subtotal)}</span>
+              <div className="space-y-2 border-t border-border pt-3 text-sm">
+                <div className="flex justify-between gap-3 text-muted">
+                  <span>סיכום ביניים</span>
+                  <span className="font-semibold text-foreground tabular-nums" dir="ltr">
+                    {formatPrice(subtotal)}
+                  </span>
+                </div>
+                {discountAmount > 0 && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted">הנחה</span>
+                    <span className="font-bold text-red-600 tabular-nums" dir="ltr">
+                      −{formatPrice(discountAmount)}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between gap-3 text-muted">
+                  <span>{DELIVERY_METHOD_LABELS[deliveryMethod]}</span>
+                  <span className="font-semibold text-foreground tabular-nums" dir="ltr">
+                    {shippingCost > 0 ? formatPrice(shippingCost) : '₪0.00'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-baseline gap-3 border-t border-border pt-2">
+                  <span className="font-bold text-foreground">סה&quot;כ לתשלום</span>
+                  <span className="text-xl font-extrabold text-primary tabular-nums" dir="ltr">
+                    {formatPrice(orderGrandTotal)}
+                  </span>
+                </div>
               </div>
-              <p className="text-[10px] text-muted mt-1">לפני משלוח</p>
             </div>
 
             <button
@@ -218,7 +263,7 @@ export default function CheckoutPage() {
                   שולח...
                 </span>
               ) : (
-                `אישור הזמנה — ${formatPrice(subtotal)}`
+                `אישור הזמנה — ${formatPrice(orderGrandTotal)}`
               )}
             </button>
           </div>

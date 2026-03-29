@@ -5,6 +5,7 @@ export {
   getFirebaseClientFirestore,
   getFirebaseClientMessaging,
 } from './client';
+export { getCities } from './cities';
 export { FIRESTORE_COLLECTIONS } from './firestore';
 
 // TODO(firebase-auth): add auth token/session helpers once Firebase Auth is enabled.

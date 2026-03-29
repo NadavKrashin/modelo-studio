@@ -2,37 +2,39 @@
 
 import Image from "next/image";
 import { useMemo, useState } from "react";
+import { useSportFilaments } from "@/hooks/useSportFilaments";
+import { hexNeedsLightBorder } from "@/lib/firebase/sport-filaments";
 import { useCartStore } from "@/lib/store";
 
 const PRICE = 89;
-const COLOR_OPTIONS = [
-  { name: "שחור", swatchCls: "bg-black" },
-  { name: "לבן", swatchCls: "bg-white border border-gray-200" },
-  { name: "בז'", swatchCls: "bg-stone-200" },
-  { name: "אפור", swatchCls: "bg-gray-500" },
-  { name: "כחול", swatchCls: "bg-blue-900" },
-  { name: "אדום", swatchCls: "bg-red-800" },
-] as const;
 
 export default function SportMedalPage() {
   const addItem = useCartStore((s) => s.addItem);
   const openCart = useCartStore((s) => s.openCart);
+  const { items: sportFilaments, loading: colorsLoading, error: colorsError } = useSportFilaments();
 
   const [step, setStep] = useState(0);
-  const [color, setColor] = useState("");
+  /** `null` = use first available filament once loaded */
+  const [colorChoice, setColorChoice] = useState<string | null>(null);
+  const color = colorChoice ?? sportFilaments[0]?.name ?? "";
 
   const totalSteps = 2;
   const progress = ((step + 1) / totalSteps) * 100;
 
   const canGoNext = useMemo(() => {
+    if (colorsLoading || sportFilaments.length === 0) return false;
     if (step === 0) {
-      return color.length > 0;
+      return sportFilaments.some((f) => f.name === color);
     }
     return true;
-  }, [step, color]);
+  }, [step, color, colorsLoading, sportFilaments]);
 
-  const goNext = () => { if (canGoNext && step < totalSteps - 1) setStep((p) => p + 1); };
-  const goBack = () => { if (step > 0) setStep((p) => p - 1); };
+  const goNext = () => {
+    if (canGoNext && step < totalSteps - 1) setStep((p) => p + 1);
+  };
+  const goBack = () => {
+    if (step > 0) setStep((p) => p - 1);
+  };
 
   const handleAddToCart = () => {
     addItem({
@@ -40,9 +42,7 @@ export default function SportMedalPage() {
       title: "משושה מדליה",
       imageUrl: "/images/sport/medal.jpeg",
       department: "sport",
-      attributes: [
-        `צבע: ${color}`,
-      ],
+      attributes: [`צבע: ${color}`],
       quantity: 1,
       unitPrice: PRICE,
       subtotal: PRICE,
@@ -53,14 +53,11 @@ export default function SportMedalPage() {
   return (
     <div className="bg-white min-h-screen" dir="rtl">
       <div className="max-w-7xl mx-auto px-4 py-10 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
-        {/* ── Sticky Preview ── */}
         <aside className="lg:col-span-5 lg:sticky lg:top-6 h-fit">
           <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 mb-4">
             התאימו אישית — משושה מדליה
           </h1>
-          <div className="mb-6 text-slate-500 text-sm font-medium">
-            קוטר 12 ס״מ
-          </div>
+          <div className="mb-6 text-slate-500 text-sm font-medium">קוטר 12 ס״מ</div>
           <div className="aspect-square overflow-hidden rounded-2xl border border-slate-200 bg-white relative">
             <Image src="/images/sport/medal.jpeg" alt="משושה מדליה" fill className="object-cover" />
           </div>
@@ -70,57 +67,68 @@ export default function SportMedalPage() {
           </div>
         </aside>
 
-        {/* ── Wizard ── */}
         <section className="lg:col-span-7">
           <div className="rounded-2xl border border-slate-200 p-5 md:p-7">
-            {/* Progress */}
             <div className="mb-8">
               <div className="flex items-center justify-between text-sm text-slate-500 mb-2">
-                <span>שלב {step + 1} מתוך {totalSteps}</span>
+                <span>
+                  שלב {step + 1} מתוך {totalSteps}
+                </span>
                 <span>{Math.round(progress)}%</span>
               </div>
               <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-                <div className="h-full bg-black transition-all duration-300" style={{ width: `${progress}%` }} />
+                <div
+                  className="h-full bg-black transition-all duration-300"
+                  style={{ width: `${progress}%` }}
+                />
               </div>
             </div>
 
-            {/* Step 0: Color */}
             {step === 0 && (
               <div>
                 <h2 className="text-2xl font-bold text-slate-900 mb-2">בחירת צבע</h2>
                 <p className="text-slate-600 mb-6">בחרו את הצבע למשושה המדליה שלכם.</p>
 
-                <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
-                  {COLOR_OPTIONS.map((c) => {
-                    const active = color === c.name;
-                    return (
-                    <button
-                      key={c.name}
-                      type="button"
-                      onClick={() => setColor(c.name)}
-                      className={`rounded-2xl border border-slate-200 bg-white p-4 text-center transition-all hover:border-slate-300 ${active ? "border-black" : ""}`}
-                    >
-                      <div className="flex flex-col items-center">
-                        <span
-                          className={[
-                            "w-12 h-12 rounded-full cursor-pointer flex-shrink-0 mx-auto transition-shadow",
-                            c.swatchCls,
-                            active ? "ring-2 ring-offset-2 ring-offset-white ring-black" : "",
-                          ].join(" ")}
-                          aria-label={c.name}
-                        />
-                        <span className="mt-3 font-bold text-sm text-slate-900">
-                          {c.name}
-                        </span>
-                      </div>
-                    </button>
-                    );
-                  })}
-                </div>
+                {colorsLoading ? (
+                  <p className="text-sm text-slate-500">טוען צבעי ספורט…</p>
+                ) : colorsError ? (
+                  <p className="text-sm text-red-600">טעינת צבעים נכשלה: {colorsError}</p>
+                ) : sportFilaments.length === 0 ? (
+                  <p className="text-sm text-slate-600">
+                    אין כרגע צבעי ספורט זמינים במלאי. נסו שוב מאוחר יותר או פנו לתמיכה.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
+                    {sportFilaments.map((c) => {
+                      const active = color === c.name;
+                      const border = hexNeedsLightBorder(c.hexColor);
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => setColorChoice(c.name)}
+                          className={`rounded-2xl border border-slate-200 bg-white p-4 text-center transition-all hover:border-slate-300 ${active ? "border-black ring-1 ring-black" : ""}`}
+                        >
+                          <div className="flex flex-col items-center">
+                            <span
+                              className={[
+                                "w-12 h-12 rounded-full cursor-pointer flex-shrink-0 mx-auto transition-shadow",
+                                border ? "border border-slate-200" : "",
+                                active ? "ring-2 ring-offset-2 ring-offset-white ring-black" : "",
+                              ].join(" ")}
+                              style={{ backgroundColor: c.hexColor }}
+                              aria-label={c.name}
+                            />
+                            <span className="mt-3 font-bold text-sm text-slate-900">{c.name}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Step 1: Summary */}
             {step === 1 && (
               <div>
                 <h2 className="text-2xl font-bold text-slate-900 mb-2">סיכום והוספה לסל</h2>
@@ -135,21 +143,31 @@ export default function SportMedalPage() {
                   </div>
                 </div>
 
-                <button onClick={handleAddToCart} className="mt-6 w-full rounded-2xl bg-black px-6 py-4 text-white font-bold text-lg hover:bg-slate-800 transition-all">
+                <button
+                  onClick={handleAddToCart}
+                  disabled={!color}
+                  className="mt-6 w-full rounded-2xl bg-black px-6 py-4 text-white font-bold text-lg hover:bg-slate-800 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                >
                   הוסף לסל — ₪{PRICE}
                 </button>
               </div>
             )}
 
-            {/* Navigation */}
             <div className="mt-8 pt-6 border-t border-slate-200 flex items-center gap-4">
               {step > 0 && (
-                <button onClick={goBack} className="rounded-2xl border-2 border-slate-300 px-8 py-4 text-base font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all">
+                <button
+                  onClick={goBack}
+                  className="rounded-2xl border-2 border-slate-300 px-8 py-4 text-base font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all"
+                >
                   אחורה
                 </button>
               )}
               {step < totalSteps - 1 && (
-                <button onClick={goNext} disabled={!canGoNext} className="flex-1 rounded-2xl bg-black px-8 py-4 text-base font-bold text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-800 transition-all">
+                <button
+                  onClick={goNext}
+                  disabled={!canGoNext}
+                  className="flex-1 rounded-2xl bg-black px-8 py-4 text-base font-bold text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-800 transition-all"
+                >
                   הבא
                 </button>
               )}

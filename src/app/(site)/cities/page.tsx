@@ -7,8 +7,8 @@ import {
   Gift,
   Map,
   Award,
-  ArrowLeft,
 } from "lucide-react";
+import { CitiesBestSellersSection } from "@/components/cities/CitiesBestSellersSection";
 
 /* ------------------------------------------------------------------ */
 /*  Data                                                               */
@@ -29,13 +29,6 @@ const PRODUCTS = [
     dims: "10 × 10 ס״מ",
     image: "/images/cities/minicube.png",
   },
-  {
-    slug: "rectangle",
-    name: "מלבן (17x12)",
-    price: 199,
-    dims: "17 × 12 ס״מ",
-    image: "/images/cities/rectangle.png",
-  },
 ] as const;
 
 const FEATURES: { icon: typeof Star; title: string; desc: string }[] = [
@@ -44,14 +37,6 @@ const FEATURES: { icon: typeof Star; title: string; desc: string }[] = [
   { icon: Gift, title: "מתנה מושלמת", desc: "אריזת פרימיום מוכנה למתנה — ליום הולדת, חתונה או חנוכת בית." },
   { icon: Map, title: "טכנולוגיית AI וסריקה", desc: "נתוני טופוגרפיה ואדריכלות מדויקים מגוגל ו-OpenStreetMap." },
   { icon: Award, title: "קולקציה צומחת", desc: "ערים חדשות מתווספות כל הזמן — 150+ ערים מרחבי העולם." },
-];
-
-const BESTSELLERS = [
-  { city: "תל אביב", country: "ישראל", flag: "🇮🇱", image: "/images/cities/tel-aviv.jpeg" },
-  { city: "ניו יורק", country: "ארצות הברית", flag: "🇺🇸", image: "/images/cities/new-york.jpeg" },
-  { city: "לונדון", country: "בריטניה", flag: "🇬🇧", image: "/images/cities/london.jpeg" },
-  { city: "פריז", country: "צרפת", flag: "🇫🇷", image: "/images/cities/city.jpeg" },
-  { city: "רומא", country: "איטליה", flag: "🇮🇹", image: "/images/cities/city.jpeg" },
 ];
 
 const STORY_CARDS = [
@@ -100,7 +85,7 @@ export default function CitiesPage() {
       <section className="max-w-5xl mx-auto px-6 py-16">
         <h2 className="text-4xl font-bold text-center mb-12">גלו את העולם בתלת־ממד</h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-end max-w-3xl mx-auto">
           {PRODUCTS.map((p) => (
             <Link
               key={p.slug}
@@ -145,42 +130,7 @@ export default function CitiesPage() {
       </section>
 
       {/* ── Section 4: Bestsellers Carousel ── */}
-      <section className="max-w-7xl mx-auto px-6 py-24">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold">הנמכרים ביותר</h2>
-          <p className="text-slate-500 mt-1">מודלים תלת־ממדיים | נוף עירוני</p>
-        </div>
-
-        <div className="flex overflow-x-auto snap-x gap-6 pb-8 scrollbar-hide">
-          {BESTSELLERS.map((b) => (
-            <div key={b.city} className="flex-shrink-0 snap-start w-72">
-              <div className="w-72 h-72 rounded-2xl overflow-hidden bg-slate-100 relative mb-4">
-                <Image src={b.image} alt={b.city} fill className="object-cover" />
-              </div>
-              <p className="text-sm text-slate-500 mb-0.5">
-                {b.flag} {b.country}
-              </p>
-              <h3 className="text-2xl font-extrabold mb-3">{b.city}</h3>
-              <Link
-                href="/cities/cube"
-                className="inline-flex items-center gap-2 rounded-xl border-2 border-black px-5 py-2.5 text-sm font-bold hover:bg-black hover:text-white transition-colors"
-              >
-                הוסף לסל
-                <ArrowLeft className="w-4 h-4" strokeWidth={2} />
-              </Link>
-            </div>
-          ))}
-        </div>
-
-        <div className="text-center mt-4">
-          <Link
-            href="/cities/products"
-            className="inline-block rounded-xl bg-black text-white px-10 py-4 font-bold text-sm hover:bg-slate-800 transition-colors"
-          >
-            חקור את כל הערים
-          </Link>
-        </div>
-      </section>
+      <CitiesBestSellersSection />
 
       {/* ── Section 5: Story Cards ── */}
       <section className="max-w-7xl mx-auto px-6 pb-24">

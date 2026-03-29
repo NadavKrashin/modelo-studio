@@ -88,13 +88,47 @@ const simpleCartItemSchema = z.object({
   addedAt: z.string().default(new Date().toISOString()),
 });
 
-const cartItemSchema = z.discriminatedUnion('kind', [studioCartItemSchema, simpleCartItemSchema]);
+const bundleCityEntrySchema = z.object({
+  name: z.string(),
+  slug: z.string(),
+  imageUrl: z.string().optional(),
+});
+
+const citiesBundleCartItemSchema = z.object({
+  kind: z.literal('cities_bundle'),
+  id: z.string(),
+  title: z.string().min(1),
+  imageUrl: z.string().optional(),
+  department: z.literal('cities'),
+  productName: z.string(),
+  sizeKey: z.enum(['cube', 'minicube']),
+  sizeLabel: z.string(),
+  frameColor: z.string(),
+  hasCover: z.boolean(),
+  coverPrice: z.number().min(0),
+  bundleDiscountPerExtraCity: z.number().min(0),
+  cities: z.array(bundleCityEntrySchema).min(1).max(50),
+  attributes: z.array(z.string().max(300)).max(40).optional(),
+  quantity: z.number().int().min(1).max(100),
+  unitPrice: z.number().min(0),
+  subtotal: z.number().min(0),
+  addedAt: z.string().default(new Date().toISOString()),
+});
+
+const cartItemSchema = z.discriminatedUnion('kind', [
+  studioCartItemSchema,
+  simpleCartItemSchema,
+  citiesBundleCartItemSchema,
+]);
 
 export const createOrderSchema = z.object({
   customer: customerDetailsSchema,
   items: z.array(cartItemSchema).min(1, 'העגלה ריקה'),
   deliveryMethod: z.enum(['shipping', 'pickup']),
   notes: z.string().max(1000).default(''),
+  couponCode: z.string().max(40).optional(),
+  /** Client-computed discount in ₪; server clamps to line subtotal. */
+  discountAmount: z.number().min(0).optional(),
 });
 
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
@@ -158,6 +192,10 @@ export const createFilamentSchema = z.object({
   sortOrder: z.number().int().min(0).default(0),
   priceModifier: z.number().min(0).default(0),
   isActive: z.boolean().default(true),
+  rollQuantity: z.number().int().min(0).default(0),
+  stockWeightGrams: z.number().int().min(0).optional(),
+  stockStatus: z.enum(['in_stock', 'low_stock', 'out_of_stock']).default('in_stock'),
+  isSportColor: z.boolean().default(false),
   imageUrl: z.string().url().optional(),
   notes: z.string().max(500).optional(),
 });

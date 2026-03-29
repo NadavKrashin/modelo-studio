@@ -44,6 +44,9 @@ export interface Order {
   subtotal: number;
   shippingCost: number;
   total: number;
+  /** Optional coupon snapshot when discount was applied at checkout. */
+  couponCode?: string;
+  discountAmount?: number;
   customerNotes?: string;
   adminNotes?: string;
   requiresApproval: boolean;

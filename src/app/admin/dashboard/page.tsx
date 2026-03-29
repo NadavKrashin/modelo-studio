@@ -197,53 +197,58 @@ export default async function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* ─── Top Categories ─── */}
-        <div className="bg-white rounded-2xl border border-border p-5">
-          <h2 className="font-bold text-foreground text-sm mb-4">קטגוריות מובילות</h2>
-          <div className="space-y-3.5">
-            {stats.topCategories.map((cat, i) => {
-              const colors = ['bg-primary', 'bg-secondary', 'bg-accent', 'bg-success', 'bg-warning'];
-              return (
-                <div key={cat.category}>
-                  <div className="flex justify-between text-sm mb-1.5">
-                    <span className="font-medium text-foreground">{cat.localizedCategory}</span>
-                    <span className="text-xs text-muted">{cat.count} • {cat.percentage}%</span>
-                  </div>
-                  <div className="w-full bg-muted-bg rounded-full h-2">
-                    <div
-                      className={`h-2 rounded-full transition-all ${colors[i % colors.length]}`}
-                      style={{ width: `${cat.percentage}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* ─── Top Search Terms ─── */}
-        <div className="bg-white rounded-2xl border border-border p-5">
-          <h2 className="font-bold text-foreground text-sm mb-4">מונחי חיפוש מובילים</h2>
-          <div className="space-y-1.5">
-            {stats.topSearchTerms.slice(0, 8).map((term, i) => (
-              <div key={term.term} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted-bg/50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-bold text-muted w-5 text-center">{i + 1}</span>
-                  <span className="text-sm font-medium text-foreground">{term.term}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted">{term.count}</span>
-                  <div className="w-16 bg-muted-bg rounded-full h-1.5">
-                    <div
-                      className="bg-primary/60 h-1.5 rounded-full"
-                      style={{ width: `${Math.min((term.count / (stats.topSearchTerms[0]?.count || 1)) * 100, 100)}%` }}
-                    />
-                  </div>
-                </div>
+        {/* TODO: Restore when Studio feature is active */}
+        {false && (
+          <>
+            {/* ─── Top Categories ─── */}
+            <div className="bg-white rounded-2xl border border-border p-5">
+              <h2 className="font-bold text-foreground text-sm mb-4">קטגוריות מובילות</h2>
+              <div className="space-y-3.5">
+                {stats.topCategories.map((cat, i) => {
+                  const colors = ['bg-primary', 'bg-secondary', 'bg-accent', 'bg-success', 'bg-warning'];
+                  return (
+                    <div key={cat.category}>
+                      <div className="flex justify-between text-sm mb-1.5">
+                        <span className="font-medium text-foreground">{cat.localizedCategory}</span>
+                        <span className="text-xs text-muted">{cat.count} • {cat.percentage}%</span>
+                      </div>
+                      <div className="w-full bg-muted-bg rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full transition-all ${colors[i % colors.length]}`}
+                          style={{ width: `${cat.percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
+
+            {/* ─── Top Search Terms ─── */}
+            <div className="bg-white rounded-2xl border border-border p-5">
+              <h2 className="font-bold text-foreground text-sm mb-4">מונחי חיפוש מובילים</h2>
+              <div className="space-y-1.5">
+                {stats.topSearchTerms.slice(0, 8).map((term, i) => (
+                  <div key={term.term} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted-bg/50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-bold text-muted w-5 text-center">{i + 1}</span>
+                      <span className="text-sm font-medium text-foreground">{term.term}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted">{term.count}</span>
+                      <div className="w-16 bg-muted-bg rounded-full h-1.5">
+                        <div
+                          className="bg-primary/60 h-1.5 rounded-full"
+                          style={{ width: `${Math.min((term.count / (stats.topSearchTerms[0]?.count || 1)) * 100, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

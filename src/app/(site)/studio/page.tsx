@@ -1,8 +1,12 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { CategoryIcon } from '@/components/ui/CategoryIcon';
 import { getSearchService, getCategoryRepo, getFilamentService } from '@/lib/services/container';
 
 export default async function StudioHomePage() {
+  // TEMPORARY REDIRECT: Studio is hidden for now. Remove this to reactivate the page.
+  redirect('/');
+
   const searchService = getSearchService();
   const categoryRepo = getCategoryRepo();
   const filamentService = getFilamentService();

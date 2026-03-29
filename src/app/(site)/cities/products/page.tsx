@@ -6,6 +6,7 @@ import Link from "next/link";
 const PRODUCTS = [
   {
     id: "cube-15",
+    slug: "cube",
     title: "מודלו סיטיז - קובייה 15x15 ס״מ",
     price: 199,
     image: "/images/cities/tel-aviv.jpeg",
@@ -13,17 +14,11 @@ const PRODUCTS = [
   },
   {
     id: "mini-cube-10",
+    slug: "minicube",
     title: "מיני קובייה 10x10 ס״מ",
     price: 159,
     image: "/images/cities/london.jpeg",
     dims: "10 × 10 ס״מ",
-  },
-  {
-    id: "rect-17",
-    title: "מלבן 17x12 ס״מ",
-    price: 199,
-    image: "/images/cities/new-york.jpeg",
-    dims: "17 × 12 ס״מ",
   },
 ] as const;
 
@@ -40,11 +35,11 @@ export default function CitiesProductsPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-4xl mx-auto">
           {PRODUCTS.map((product) => (
             <Link
               key={product.id}
-              href={`/cities/${product.id}`}
+              href={`/cities/${product.slug}`}
               className="group block"
             >
               <div className="aspect-square overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 relative">

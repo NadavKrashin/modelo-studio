@@ -6,9 +6,16 @@ import type {
   Filament,
   FilamentMaterial,
   FilamentOption,
+  FilamentStockStatus,
   UpdateFilamentInput,
 } from '@/lib/types';
 import type { FilamentRepository } from './interfaces';
+
+function deriveStockStatus(rolls: number): FilamentStockStatus {
+  if (rolls <= 0) return 'out_of_stock';
+  if (rolls <= 1) return 'low_stock';
+  return 'in_stock';
+}
 
 const filamentRecordSchema = z.object({
   id: z.string().min(1),
@@ -20,6 +27,10 @@ const filamentRecordSchema = z.object({
   sortOrder: z.number().int().min(0),
   priceModifier: z.number().min(0).default(0),
   isActive: z.boolean().default(true),
+  rollQuantity: z.number().int().min(0).default(0),
+  stockWeightGrams: z.number().int().min(0).optional(),
+  stockStatus: z.enum(['in_stock', 'low_stock', 'out_of_stock']).default('in_stock'),
+  isSportColor: z.boolean().default(false),
   imageUrl: z.string().url().optional(),
   notes: z.string().max(500).optional(),
   createdAt: z.string(),
@@ -34,12 +45,17 @@ function withoutUndefined<T extends Record<string, unknown>>(obj: T): Partial<T>
 }
 
 function normalize(input: FilamentRecord): Filament {
+  const rolls = input.rollQuantity;
+  const stockStatus = deriveStockStatus(rolls);
+  const inStock = rolls > 0 && input.available;
   return {
     ...input,
+    rollQuantity: rolls,
+    stockStatus,
     material: input.materialType,
     colorHex: input.hexColor,
     localizedColorName: input.colorName,
-    inStock: input.available,
+    inStock,
   };
 }
 
@@ -53,7 +69,7 @@ function toOption(filament: Filament): FilamentOption {
     colorName: filament.colorName,
     localizedColorName: filament.colorName,
     priceModifier: filament.priceModifier ?? 0,
-    inStock: filament.available,
+    inStock: filament.rollQuantity > 0 && filament.available,
     isPopular: filament.sortOrder < 5,
   };
 }
@@ -99,7 +115,7 @@ export class FirestoreFilamentRepository implements FilamentRepository {
       const parsed = filamentRecordSchema.safeParse(doc.data());
       if (!parsed.success) continue;
       const normalized = normalize(parsed.data);
-      if (!normalized.isActive || !normalized.available) continue;
+      if (!normalized.isActive || !normalized.available || normalized.rollQuantity <= 0) continue;
       items.push(toOption(normalized));
     }
     return items;
@@ -107,6 +123,7 @@ export class FirestoreFilamentRepository implements FilamentRepository {
 
   async create(input: CreateFilamentInput): Promise<Filament> {
     const timestamp = nowIso();
+    const rolls = input.rollQuantity ?? 0;
     const record: FilamentRecord = filamentRecordSchema.parse({
       id: input.id,
       name: input.name,
@@ -117,6 +134,10 @@ export class FirestoreFilamentRepository implements FilamentRepository {
       sortOrder: input.sortOrder,
       priceModifier: input.priceModifier ?? 0,
       isActive: input.isActive ?? true,
+      rollQuantity: rolls,
+      stockWeightGrams: input.stockWeightGrams,
+      stockStatus: deriveStockStatus(rolls),
+      isSportColor: input.isSportColor ?? false,
       imageUrl: input.imageUrl,
       notes: input.notes,
       createdAt: timestamp,
@@ -129,6 +150,7 @@ export class FirestoreFilamentRepository implements FilamentRepository {
   async update(id: string, patch: UpdateFilamentInput): Promise<Filament | null> {
     const current = await this.findById(id);
     if (!current) return null;
+    const nextRolls = patch.rollQuantity !== undefined ? patch.rollQuantity : current.rollQuantity;
     const merged = filamentRecordSchema.parse({
       id: current.id,
       name: patch.name ?? current.name,
@@ -139,6 +161,11 @@ export class FirestoreFilamentRepository implements FilamentRepository {
       sortOrder: patch.sortOrder ?? current.sortOrder,
       priceModifier: patch.priceModifier ?? current.priceModifier,
       isActive: patch.isActive ?? current.isActive,
+      rollQuantity: nextRolls,
+      stockWeightGrams:
+        patch.stockWeightGrams !== undefined ? patch.stockWeightGrams : current.stockWeightGrams,
+      stockStatus: deriveStockStatus(nextRolls),
+      isSportColor: patch.isSportColor ?? current.isSportColor,
       imageUrl: patch.imageUrl ?? current.imageUrl,
       notes: patch.notes ?? current.notes,
       createdAt: current.createdAt,
@@ -158,5 +185,13 @@ export class FirestoreFilamentRepository implements FilamentRepository {
 
   async setActive(id: string, active: boolean): Promise<Filament | null> {
     return this.update(id, { isActive: active });
+  }
+
+  async delete(id: string): Promise<boolean> {
+    const ref = this.col().doc(id);
+    const doc = await ref.get();
+    if (!doc.exists) return false;
+    await ref.delete();
+    return true;
   }
 }

@@ -133,63 +133,68 @@ export default async function AdminAnalyticsPage() {
           </Link>
         </div>
 
-        {/* ─── Top Categories ─── */}
-        <div className="bg-white rounded-2xl border border-border p-5">
-          <h2 className="font-bold text-foreground text-sm mb-4">קטגוריות מובילות</h2>
-          <div className="space-y-4">
-            {stats.topCategories.map((cat, i) => {
-              const colors = ['from-primary to-blue-500', 'from-secondary to-purple-500', 'from-accent to-cyan-500', 'from-success to-emerald-500', 'from-warning to-amber-500'];
-              return (
-                <div key={cat.category}>
-                  <div className="flex justify-between text-sm mb-1.5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-muted w-4">{i + 1}</span>
-                      <span className="font-medium text-foreground">{cat.localizedCategory}</span>
+        {/* TODO: Restore when Studio feature is active */}
+        {false && (
+          <>
+            {/* ─── Top Categories (Studio catalog) ─── */}
+            <div className="bg-white rounded-2xl border border-border p-5">
+              <h2 className="font-bold text-foreground text-sm mb-4">קטגוריות מובילות</h2>
+              <div className="space-y-4">
+                {stats.topCategories.map((cat, i) => {
+                  const colors = ['from-primary to-blue-500', 'from-secondary to-purple-500', 'from-accent to-cyan-500', 'from-success to-emerald-500', 'from-warning to-amber-500'];
+                  return (
+                    <div key={cat.category}>
+                      <div className="flex justify-between text-sm mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-muted w-4">{i + 1}</span>
+                          <span className="font-medium text-foreground">{cat.localizedCategory}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted">{cat.count} הזמנות</span>
+                          <span className="text-xs font-bold text-foreground">{cat.percentage}%</span>
+                        </div>
+                      </div>
+                      <div className="w-full bg-muted-bg rounded-full h-2.5">
+                        <div
+                          className={`h-2.5 rounded-full bg-gradient-to-l ${colors[i % colors.length]}`}
+                          style={{ width: `${cat.percentage}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted">{cat.count} הזמנות</span>
-                      <span className="text-xs font-bold text-foreground">{cat.percentage}%</span>
-                    </div>
-                  </div>
-                  <div className="w-full bg-muted-bg rounded-full h-2.5">
-                    <div
-                      className={`h-2.5 rounded-full bg-gradient-to-l ${colors[i % colors.length]}`}
-                      style={{ width: `${cat.percentage}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+                  );
+                })}
+              </div>
+            </div>
 
-        {/* ─── Top Search Terms ─── */}
-        <div className="bg-white rounded-2xl border border-border p-5">
-          <h2 className="font-bold text-foreground text-sm mb-4">מונחי חיפוש מובילים</h2>
-          <div className="space-y-1">
-            {stats.topSearchTerms.map((term, i) => {
-              const maxCount = stats.topSearchTerms[0]?.count ?? 1;
-              const pct = Math.round((term.count / maxCount) * 100);
-              return (
-                <div key={term.term} className="group flex items-center gap-3 py-2.5 px-3 rounded-xl hover:bg-muted-bg/50 transition-colors">
-                  <span className="text-xs font-bold text-muted w-5 text-center">{i + 1}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium text-foreground truncate">{term.term}</span>
-                      <span className="text-xs text-muted shrink-0 mr-2">{term.count} חיפושים</span>
+            {/* ─── Top Search Terms (Studio search) ─── */}
+            <div className="bg-white rounded-2xl border border-border p-5">
+              <h2 className="font-bold text-foreground text-sm mb-4">מונחי חיפוש מובילים</h2>
+              <div className="space-y-1">
+                {stats.topSearchTerms.map((term, i) => {
+                  const maxCount = stats.topSearchTerms[0]?.count ?? 1;
+                  const pct = Math.round((term.count / maxCount) * 100);
+                  return (
+                    <div key={term.term} className="group flex items-center gap-3 py-2.5 px-3 rounded-xl hover:bg-muted-bg/50 transition-colors">
+                      <span className="text-xs font-bold text-muted w-5 text-center">{i + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-medium text-foreground truncate">{term.term}</span>
+                          <span className="text-xs text-muted shrink-0 mr-2">{term.count} חיפושים</span>
+                        </div>
+                        <div className="w-full bg-muted-bg rounded-full h-1.5">
+                          <div
+                            className="bg-primary/50 h-1.5 rounded-full transition-all group-hover:bg-primary"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div className="w-full bg-muted-bg rounded-full h-1.5">
-                      <div
-                        className="bg-primary/50 h-1.5 rounded-full transition-all group-hover:bg-primary"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
 
         {/* ─── Revenue per Day Table ─── */}
         <div className="bg-white rounded-2xl border border-border p-5">

@@ -28,7 +28,7 @@ export class PricingService {
    * Uses the client-submitted unitPrice as the base and validates with scale.
    */
   calculateItemPrice(item: CartItem): number {
-    if (item.kind === 'simple') {
+    if (item.kind === 'simple' || item.kind === 'cities_bundle') {
       return Math.max(Math.round(item.unitPrice), MIN_PRICE);
     }
 
@@ -46,7 +46,7 @@ export class PricingService {
    * Full breakdown for display or verification.
    */
   getBreakdown(item: CartItem): PriceBreakdown {
-    if (item.kind === 'simple') {
+    if (item.kind === 'simple' || item.kind === 'cities_bundle') {
       const unitPrice = Math.max(Math.round(item.unitPrice), MIN_PRICE);
       return {
         basePrice: unitPrice,

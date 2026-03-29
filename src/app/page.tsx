@@ -98,6 +98,9 @@ const TRUST_ITEMS = [
   { icon: MapPin, label: "דיוק טופוגרפי מדויק" },
 ];
 
+const STUDIO_WORLD = WORLDS.find((w) => w.href === "/studio");
+const WORLDS_VISIBLE = WORLDS.filter((w) => w.href !== "/studio");
+
 export default function HomePage() {
   return (
     <div className="bg-white text-slate-900 font-sans" dir="rtl">
@@ -139,31 +142,63 @@ export default function HomePage() {
         </p>
       </section>
 
-      {/* ── 4 Worlds ── */}
-      <section id="worlds" className="bg-slate-50 border-y border-slate-200 py-24 px-6">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-extrabold text-center mb-4">
-            ארבעת העולמות של מודלו
+      {/* ── Worlds (Studio hidden — restore by setting condition to true) ── */}
+      <section
+        id="worlds"
+        className="border-y border-slate-100/80 bg-gradient-to-b from-slate-50 to-white py-24 px-6"
+      >
+        <div className="mx-auto max-w-5xl">
+          <h2 className="mb-4 text-center text-3xl font-extrabold text-slate-900 md:text-4xl">
+            העולמות של מודלו
           </h2>
-          <p className="text-center text-slate-500 mb-16 text-base">
+          <p className="mb-16 text-center text-base text-slate-500">
             כל עולם — חוויה ייחודית של עיצוב, יצירה והדפסה בתלת-ממד.
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 md:gap-10">
-            {WORLDS.map((w) => (
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 sm:gap-10 lg:grid-cols-3">
+            {false &&
+              STUDIO_WORLD && (
+                <Link
+                  key={STUDIO_WORLD.title}
+                  href={STUDIO_WORLD.href}
+                  className="group flex flex-col items-center rounded-2xl border border-slate-100 bg-white p-8 text-center shadow-sm transition-all duration-300 ease-out hover:-translate-y-2 hover:border-slate-300/50 hover:shadow-xl hover:shadow-slate-200/60"
+                >
+                  <div
+                    className={`mb-6 flex h-24 w-24 scale-100 items-center justify-center rounded-xl ${STUDIO_WORLD.accentBg} ${STUDIO_WORLD.accent} transition-transform duration-300 ease-out group-hover:scale-105`}
+                  >
+                    {STUDIO_WORLD.icon}
+                  </div>
+                  <h3 className="mb-2 text-lg font-semibold text-slate-900">{STUDIO_WORLD.title}</h3>
+                  <p className="mb-6 flex-1 text-sm leading-relaxed text-slate-500">{STUDIO_WORLD.desc}</p>
+                  <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-700 transition-colors group-hover:text-black">
+                    גלה עוד
+                    <ArrowLeft
+                      className="h-3.5 w-3.5 transition-transform duration-300 ease-out group-hover:-translate-x-1.5"
+                      strokeWidth={2.5}
+                    />
+                  </span>
+                </Link>
+              )}
+
+            {WORLDS_VISIBLE.map((w) => (
               <Link
                 key={w.title}
                 href={w.href}
-                className="group flex flex-col items-center text-center bg-white rounded-2xl border border-slate-200 p-8 transition-all duration-300 hover:scale-[1.04] hover:shadow-xl hover:border-slate-300"
+                className="group flex flex-col items-center rounded-2xl border border-slate-100 bg-white p-8 text-center shadow-sm transition-all duration-300 ease-out hover:-translate-y-2 hover:border-slate-300/50 hover:shadow-xl hover:shadow-slate-200/60"
               >
-                <div className={`w-24 h-24 ${w.accentBg} rounded-2xl flex items-center justify-center mb-6 ${w.accent} transition-colors duration-300`}>
+                <div
+                  className={`mb-6 flex h-24 w-24 items-center justify-center rounded-xl ${w.accentBg} ${w.accent} transition-transform duration-300 ease-out group-hover:scale-105`}
+                >
                   {w.icon}
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 mb-2">{w.title}</h3>
-                <p className="text-sm text-slate-500 leading-relaxed mb-6 flex-1">{w.desc}</p>
-                <span className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-900 group-hover:text-black transition-colors">
+                <h3 className="mb-2 text-lg font-semibold text-slate-900">{w.title}</h3>
+                <p className="mb-6 flex-1 text-sm leading-relaxed text-slate-500">{w.desc}</p>
+                <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-700 transition-colors group-hover:text-black">
                   גלה עוד
-                  <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" strokeWidth={2.5} />
+                  <ArrowLeft
+                    className="h-3.5 w-3.5 transition-transform duration-300 ease-out group-hover:-translate-x-1.5"
+                    strokeWidth={2.5}
+                  />
                 </span>
               </Link>
             ))}

@@ -1,5 +1,8 @@
 export type FilamentMaterial = 'PLA' | 'PETG' | 'ABS' | 'TPU' | 'Nylon' | 'Resin';
 
+/** Inventory level for admin tracking (stored in Firestore). */
+export type FilamentStockStatus = 'in_stock' | 'low_stock' | 'out_of_stock';
+
 export interface FilamentOption {
   id: string;
   name: string;
@@ -23,6 +26,14 @@ export interface Filament {
   sortOrder: number;
   priceModifier: number;
   isActive: boolean;
+  /** Number of filament rolls in stock (primary inventory). */
+  rollQuantity: number;
+  /** Grams on spool / estimated remaining stock (optional). */
+  stockWeightGrams?: number;
+  /** Admin inventory bucket for badges; derived from roll quantity when syncing. */
+  stockStatus: FilamentStockStatus;
+  /** When true, this color is offered in Modelo Sport frame pickers. */
+  isSportColor: boolean;
   imageUrl?: string;
   notes?: string;
   createdAt: string;
@@ -45,6 +56,10 @@ export interface CreateFilamentInput {
   sortOrder: number;
   priceModifier?: number;
   isActive?: boolean;
+  rollQuantity?: number;
+  stockWeightGrams?: number;
+  stockStatus?: FilamentStockStatus;
+  isSportColor?: boolean;
   imageUrl?: string;
   notes?: string;
 }
@@ -58,6 +73,10 @@ export interface UpdateFilamentInput {
   sortOrder?: number;
   priceModifier?: number;
   isActive?: boolean;
+  rollQuantity?: number;
+  stockWeightGrams?: number;
+  stockStatus?: FilamentStockStatus;
+  isSportColor?: boolean;
   imageUrl?: string;
   notes?: string;
 }

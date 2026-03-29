@@ -1,14 +1,8 @@
 import { v4 as uuid } from 'uuid';
-import type { Order, OrderStatus, CustomerDetails, CartItem, OrderConfirmation } from '@/lib/types';
+import type { Order, OrderStatus, OrderConfirmation } from '@/lib/types';
+import type { CreateOrderInput } from '@/lib/validation';
 import type { OrderRepository, AnalyticsRepository } from '@/lib/repositories';
 import type { PricingService } from './pricing-service';
-
-interface CreateOrderInput {
-  customer: CustomerDetails;
-  items: CartItem[];
-  deliveryMethod: 'shipping' | 'pickup';
-  notes?: string;
-}
 
 /**
  * Generates a 7-character uppercase alphanumeric order number.
@@ -42,7 +36,13 @@ export class OrderService {
 
     const subtotal = lineItems.reduce((sum, li) => sum + li.subtotal, 0);
     const shippingCost = input.deliveryMethod === 'shipping' ? 35 : 0;
-    const total = subtotal + shippingCost;
+    const requestedDiscount = Math.min(
+      Math.max(0, input.discountAmount ?? 0),
+      subtotal,
+    );
+    const discountAmount =
+      Math.round(requestedDiscount * 100) / 100;
+    const total = Math.max(0, subtotal - discountAmount + shippingCost);
 
     const requiresApproval = lineItems.some(
       (li) =>
@@ -64,6 +64,14 @@ export class OrderService {
       subtotal,
       shippingCost,
       total,
+      ...(discountAmount > 0
+        ? {
+            discountAmount,
+            ...(input.couponCode?.trim()
+              ? { couponCode: input.couponCode.trim().toUpperCase() }
+              : {}),
+          }
+        : {}),
       deliveryMethod: input.deliveryMethod,
       status: initialStatus,
       requiresApproval,

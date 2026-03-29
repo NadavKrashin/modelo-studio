@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed:filaments": "node scripts/seed-filaments.mjs"
+    "seed:filaments": "node scripts/seed-filaments.mjs",
+    "seed:cities": "node scripts/seed-cities.mjs"
   },
   "dependencies": {
     "firebase": "^12.10.0",

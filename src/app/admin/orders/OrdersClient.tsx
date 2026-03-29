@@ -231,7 +231,9 @@ export function OrdersClient({ initialOrders, filamentOptions }: Props) {
                     {selected.items.map((item, i) => (
                       <div key={i} className="bg-muted-bg/50 rounded-xl p-3.5">
                         <div className="flex items-start justify-between mb-2">
-                          <p className="font-semibold text-sm text-foreground">{item.localizedModelName || item.modelName}</p>
+                          <p className="font-semibold text-sm text-foreground">
+                            {item.kind === 'studio_model' ? (item.localizedModelName || item.modelName) : item.title}
+                          </p>
                           <span className="text-sm font-bold text-foreground shrink-0 me-3">{formatPrice(item.subtotal)}</span>
                         </div>
                         <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
@@ -243,42 +245,68 @@ export function OrdersClient({ initialOrders, filamentOptions }: Props) {
                             <span className="text-muted">מחיר יחידה:</span>
                             <span className="font-medium text-foreground mr-1">{formatPrice(item.unitPrice)}</span>
                           </div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-muted">צבע:</span>
-                            <span
-                              className="w-3.5 h-3.5 rounded-full border border-gray-200 inline-block"
-                              style={{ backgroundColor: getFilamentColor(item.customization.filamentId) }}
-                            />
-                            <span className="font-medium text-foreground">{getFilamentName(item.customization.filamentId)}</span>
-                          </div>
-                          <div>
-                            <span className="text-muted">קנ&quot;מ:</span>
-                            <span className="font-medium text-foreground mr-1">×{item.customization.scale}</span>
-                          </div>
-                          {item.customization.dimensions && (
-                            <div className="col-span-2">
-                              <span className="text-muted">מידות:</span>
-                              <span className="font-medium text-foreground mr-1" dir="ltr">
-                                {item.customization.dimensions.widthMm}×{item.customization.dimensions.heightMm}×{item.customization.dimensions.depthMm}mm
-                              </span>
-                            </div>
+
+                          {item.kind === 'studio_model' ? (
+                            <>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-muted">צבע:</span>
+                                <span
+                                  className="w-3.5 h-3.5 rounded-full border border-gray-200 inline-block"
+                                  style={{ backgroundColor: getFilamentColor(item.customization.filamentId) }}
+                                />
+                                <span className="font-medium text-foreground">{getFilamentName(item.customization.filamentId)}</span>
+                              </div>
+                              <div>
+                                <span className="text-muted">קנ&quot;מ:</span>
+                                <span className="font-medium text-foreground mr-1">×{item.customization.scale}</span>
+                              </div>
+                              {item.customization.dimensions && (
+                                <div className="col-span-2">
+                                  <span className="text-muted">מידות:</span>
+                                  <span className="font-medium text-foreground mr-1" dir="ltr">
+                                    {item.customization.dimensions.widthMm}×{item.customization.dimensions.heightMm}×{item.customization.dimensions.depthMm}mm
+                                  </span>
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <div>
+                                <span className="text-muted">מחלקה:</span>
+                                <span className="font-medium text-foreground mr-1">{item.department}</span>
+                              </div>
+                              {item.kind === 'cities_bundle' && item.cities.length > 0 && (
+                                <div className="col-span-2">
+                                  <span className="text-muted">ערים:</span>
+                                  <span className="font-medium text-foreground mr-1">
+                                    {item.cities.map((c) => c.name).join(' · ')}
+                                  </span>
+                                </div>
+                              )}
+                              {item.attributes && item.attributes.length > 0 && (
+                                <div className="col-span-2">
+                                  <span className="text-muted">מאפיינים:</span>
+                                  <span className="font-medium text-foreground mr-1">{item.attributes.join(' • ')}</span>
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
 
-                        {/* Customization flags */}
-                        {item.customization.embossedText && (
+                        {/* Studio customization flags */}
+                        {item.kind === 'studio_model' && item.customization.embossedText && (
                           <div className="mt-2.5 p-2.5 bg-amber-50 rounded-lg border border-amber-100">
                             <p className="text-[11px] font-bold text-amber-700 mb-0.5">טקסט חרוט</p>
                             <p className="text-sm text-amber-900 font-medium">&ldquo;{item.customization.embossedText}&rdquo;</p>
                           </div>
                         )}
-                        {item.customization.notes && (
+                        {item.kind === 'studio_model' && item.customization.notes && (
                           <div className="mt-2 p-2.5 bg-blue-50 rounded-lg border border-blue-100">
                             <p className="text-[11px] font-bold text-blue-700 mb-0.5">הערת לקוח</p>
                             <p className="text-xs text-blue-900">{item.customization.notes}</p>
                           </div>
                         )}
-                        {item.customization.referenceImages && item.customization.referenceImages.length > 0 && (
+                        {item.kind === 'studio_model' && item.customization.referenceImages && item.customization.referenceImages.length > 0 && (
                           <div className="mt-2 p-2.5 bg-purple-50 rounded-lg border border-purple-100">
                             <p className="text-[11px] font-bold text-purple-700 mb-1">תמונות ייחוס ({item.customization.referenceImages.length})</p>
                             <div className="flex gap-1.5">

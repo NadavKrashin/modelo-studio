@@ -46,6 +46,8 @@ export async function POST(request: Request) {
       items: result.data.items,
       deliveryMethod: result.data.deliveryMethod,
       notes: result.data.notes,
+      couponCode: result.data.couponCode,
+      discountAmount: result.data.discountAmount,
     });
 
     return NextResponse.json(confirmation, { status: 201 });

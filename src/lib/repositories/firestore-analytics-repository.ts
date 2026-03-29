@@ -98,7 +98,12 @@ export class FirestoreAnalyticsRepository implements AnalyticsRepository {
 
     for (const order of orders) {
       for (const item of order.items) {
-        const categoryId = item.modelId.split('-').slice(0, 2).join('-') || 'cat-unknown';
+        const categoryId =
+          item.kind === 'studio_model'
+            ? item.modelId.split('-').slice(0, 2).join('-') || 'cat-unknown'
+            : item.department
+              ? `dept-${item.department}`
+              : 'cat-unknown';
         counts.set(categoryId, (counts.get(categoryId) ?? 0) + item.quantity);
         total += item.quantity;
       }
