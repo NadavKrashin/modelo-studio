@@ -8,6 +8,17 @@ import { useSearchParams } from 'next/navigation';
 
 const STATUS_ORDER: OrderStatus[] = ['received', 'pending_approval', 'in_production', 'printed', 'shipped', 'completed'];
 
+function orderItemTitle(item: Order['items'][number]): string {
+  if (item.kind === 'studio_model') return item.localizedModelName || item.modelName;
+  if (item.kind === 'cities_bundle') return item.title;
+  return item.title;
+}
+
+function orderItemSource(item: Order['items'][number]): string | undefined {
+  if (item.kind === 'studio_model') return item.sourceName;
+  return undefined;
+}
+
 const STATUS_ICONS: Record<OrderStatus, React.ReactNode> = {
   received: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 3.75H6.912a2.25 2.25 0 0 0-2.15 1.588L2.35 13.177a2.25 2.25 0 0 0-.1.661V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 0 0-2.15-1.588H15M2.25 13.5h3.86a2.25 2.25 0 0 1 2.012 1.244l.256.512a2.25 2.25 0 0 0 2.013 1.244h3.218a2.25 2.25 0 0 0 2.013-1.244l.256-.512a2.25 2.25 0 0 1 2.013-1.244h3.859M12 3v8.25m0 0-3-3m3 3 3-3" /></svg>,
   pending_approval: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>,
@@ -20,20 +31,30 @@ const STATUS_ICONS: Record<OrderStatus, React.ReactNode> = {
 export function OrderTracker() {
   const searchParams = useSearchParams();
   const [orderNumber, setOrderNumber] = useState(searchParams.get('orderNumber') ?? '');
+  const [lookupToken, setLookupToken] = useState(searchParams.get('token') ?? '');
   const [order, setOrder] = useState<Order | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const fetchOrder = async (num: string) => {
+  const fetchOrder = async (num: string, token: string) => {
     setLoading(true);
     setError('');
     setOrder(null);
+    const t = token.trim();
+    if (!t) {
+      setError('נדרש קוד מעקב מהקישור שקיבלתם לאחר ההזמנה.');
+      setLoading(false);
+      return;
+    }
     try {
-      const res = await fetch(`/api/orders/${encodeURIComponent(num.trim())}`);
+      const qs = new URLSearchParams({ token: t });
+      const res = await fetch(
+        `/api/orders/${encodeURIComponent(num.trim())}?${qs.toString()}`,
+      );
       if (res.ok) {
         setOrder(await res.json());
       } else {
-        setError('לא נמצאה הזמנה עם מספר זה. ודאו שהמספר נכון ונסו שוב.');
+        setError('לא נמצאה הזמנה עם הפרטים שהוזנו. ודאו את מספר ההזמנה ואת קוד המעקב.');
       }
     } catch {
       setError('שגיאה בחיפוש. נסו שוב.');
@@ -44,15 +65,17 @@ export function OrderTracker() {
 
   useEffect(() => {
     const num = searchParams.get('orderNumber');
+    const tok = searchParams.get('token') ?? '';
     if (num) {
       setOrderNumber(num);
-      fetchOrder(num);
+      if (tok) setLookupToken(tok);
+      if (tok) fetchOrder(num, tok);
     }
   }, [searchParams]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (orderNumber.trim()) fetchOrder(orderNumber);
+    if (orderNumber.trim()) fetchOrder(orderNumber, lookupToken);
   };
 
   const currentStatusIdx = order ? STATUS_ORDER.indexOf(order.status) : -1;
@@ -66,31 +89,50 @@ export function OrderTracker() {
           </svg>
         </div>
         <h1 className="text-2xl md:text-3xl font-extrabold text-foreground mb-2">מעקב הזמנה</h1>
-        <p className="text-muted text-sm">הזינו את מספר ההזמנה שקיבלתם לאחר ביצוע ההזמנה</p>
+        <p className="text-muted text-sm">
+          הזינו את מספר ההזמנה ואת קוד המעקב מהקישור בדף אישור ההזמנה
+        </p>
       </div>
 
-      <form onSubmit={handleSearch} className="flex gap-2 mb-8">
-        <div className="flex-1 relative">
+      <form onSubmit={handleSearch} className="space-y-3 mb-8">
+        <div className="flex gap-2">
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              value={orderNumber}
+              onChange={(e) => setOrderNumber(e.target.value)}
+              placeholder="MDL-XXXXXXX"
+              className="w-full px-4 py-3.5 rounded-xl border border-border bg-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 text-sm transition-all"
+              dir="ltr"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="bg-primary hover:bg-primary-hover disabled:opacity-60 text-white px-6 py-3.5 rounded-xl font-semibold text-sm transition-all shrink-0"
+          >
+            {loading ? (
+              <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
+            ) : (
+              'חיפוש'
+            )}
+          </button>
+        </div>
+        <div>
+          <label htmlFor="order-lookup-token" className="sr-only">
+            קוד מעקב
+          </label>
           <input
+            id="order-lookup-token"
             type="text"
-            value={orderNumber}
-            onChange={(e) => setOrderNumber(e.target.value)}
-            placeholder="MDL-XXXXXXX"
+            value={lookupToken}
+            onChange={(e) => setLookupToken(e.target.value)}
+            placeholder="קוד מעקב (מהקישור באישור ההזמנה)"
             className="w-full px-4 py-3.5 rounded-xl border border-border bg-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 text-sm transition-all"
             dir="ltr"
+            autoComplete="off"
           />
         </div>
-        <button
-          type="submit"
-          disabled={loading}
-          className="bg-primary hover:bg-primary-hover disabled:opacity-60 text-white px-6 py-3.5 rounded-xl font-semibold text-sm transition-all shrink-0"
-        >
-          {loading ? (
-            <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
-          ) : (
-            'חיפוש'
-          )}
-        </button>
       </form>
 
       {error && (
@@ -170,22 +212,25 @@ export function OrderTracker() {
             </div>
 
             <div className="border-t border-border pt-4 space-y-2.5">
-              {order.items.map((item) => (
-                <div key={item.id} className="flex justify-between items-center">
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <p className="text-sm font-medium text-foreground">{item.localizedModelName}</p>
-                      {item.sourceName && item.sourceName !== 'Modelo' && (
-                        <span className="text-[9px] font-medium bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded">
-                          {item.sourceName}
-                        </span>
-                      )}
+              {order.items.map((item) => {
+                const src = orderItemSource(item);
+                return (
+                  <div key={item.id} className="flex justify-between items-center">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-sm font-medium text-foreground">{orderItemTitle(item)}</p>
+                        {src && src !== 'Modelo' && (
+                          <span className="text-[9px] font-medium bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded">
+                            {src}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-muted">כמות: {item.quantity}</p>
                     </div>
-                    <p className="text-[11px] text-muted">כמות: {item.quantity}</p>
+                    <span className="text-sm font-bold text-foreground">{formatPrice(item.subtotal)}</span>
                   </div>
-                  <span className="text-sm font-bold text-foreground">{formatPrice(item.subtotal)}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="border-t border-border mt-4 pt-4 flex justify-between items-baseline">
@@ -199,24 +244,9 @@ export function OrderTracker() {
       {/* Help text */}
       {!order && !error && !loading && (
         <div className="text-center mt-8">
-          <p className="text-xs text-muted mb-3">
-            הזינו את מספר ההזמנה שקיבלתם באישור ההזמנה (פורמט: MDL-XXXXXXX)
+          <p className="text-xs text-muted leading-relaxed max-w-md mx-auto">
+            אם איבדתם את הקישור, בדקו את היסטוריית הדפדפן או פנו לשירות הלקוחות עם מספר ההזמנה.
           </p>
-          <p className="text-[11px] text-muted">
-            לבדיקה, נסו אחד מאלו:
-          </p>
-          <div className="flex items-center justify-center gap-2 mt-2 flex-wrap">
-            {['MDL-2025-001', 'MDL-2025-002', 'MDL-2025-003', 'MDL-2025-004'].map((num) => (
-              <button
-                key={num}
-                onClick={() => { setOrderNumber(num); fetchOrder(num); }}
-                className="text-xs text-primary hover:underline font-semibold bg-primary-50 px-2.5 py-1 rounded-lg"
-                dir="ltr"
-              >
-                {num}
-              </button>
-            ))}
-          </div>
         </div>
       )}
     </div>

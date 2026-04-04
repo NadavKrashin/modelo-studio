@@ -8,6 +8,10 @@ export interface PriceCalculationInput {
   filamentOptions?: FilamentOption[];
   quantity: number;
   hasEmbossedText: boolean;
+  /** When set, overrides default embossed surcharge (e.g. from Firestore settings). */
+  embossedTextSurcharge?: number;
+  /** When set, overrides minimum unit price (e.g. from Firestore settings). */
+  minUnitPrice?: number;
 }
 
 export interface PriceBreakdown {
@@ -44,9 +48,15 @@ export function calculatePrice(input: PriceCalculationInput): PriceBreakdown {
   const filament = (filamentOptions ?? []).find((f) => f.id === filamentId);
   const materialModifier = filament?.priceModifier ?? 0;
 
-  const embossedTextSurcharge = hasEmbossedText ? EMBOSSED_TEXT_SURCHARGE : 0;
+  const embossedTextSurcharge = hasEmbossedText
+    ? (input.embossedTextSurcharge ?? EMBOSSED_TEXT_SURCHARGE)
+    : 0;
 
-  const unitPrice = Math.max(MIN_PRICE, Math.round((sizeAdjustedPrice + materialModifier + embossedTextSurcharge) * 100) / 100);
+  const minUnit = input.minUnitPrice ?? MIN_PRICE;
+  const unitPrice = Math.max(
+    minUnit,
+    Math.round((sizeAdjustedPrice + materialModifier + embossedTextSurcharge) * 100) / 100,
+  );
 
   return {
     basePrice,

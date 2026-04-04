@@ -30,10 +30,10 @@ function normalizeName(name: string): string {
 
 function qualityScore(model: NormalizedModel): number {
   let score = 0;
-  score += model.images.length * 5;
-  score += model.tags.length * 2;
+  score += (model.images?.length ?? 0) * 5;
+  score += (model.tags?.length ?? 0) * 2;
   score += model.popularityScore;
-  if (model.description.length > 50) score += 10;
+  if ((model.description?.length ?? 0) > 50) score += 10;
   if (model.printTimeMinutes) score += 5;
   if (model.previewAvailable) score += 10;
   return score;
@@ -79,7 +79,8 @@ export function deduplicate<T extends NormalizedModel>(
   const afterExact: T[] = [];
 
   for (const item of items) {
-    const key = `${item.source.name}:${item.externalId}`;
+    const sourceKey = item.source?.name ?? 'unknown';
+    const key = `${sourceKey}:${item.externalId ?? ''}`;
     const existing = seenExact.get(key);
     if (existing) {
       if (qualityScore(item) > qualityScore(existing)) {
@@ -105,7 +106,7 @@ export function deduplicate<T extends NormalizedModel>(
   const normalizedNames: string[] = [];
 
   for (const item of afterExact) {
-    const norm = normalizeName(item.name);
+    const norm = normalizeName(item.name ?? '');
     let isDuplicate = false;
 
     for (let i = 0; i < result.length; i++) {

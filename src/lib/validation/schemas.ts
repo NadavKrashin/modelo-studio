@@ -70,8 +70,6 @@ const studioCartItemSchema = z.object({
   sourceUrl: z.string().optional(),
   customization: customizationSchema,
   quantity: z.number().int().min(1).max(100),
-  unitPrice: z.number().min(0),
-  subtotal: z.number().min(0),
   addedAt: z.string().default(new Date().toISOString()),
 });
 
@@ -83,9 +81,11 @@ const simpleCartItemSchema = z.object({
   department: z.enum(['cities', 'personal', 'sport', 'studio', 'other']).default('other'),
   attributes: z.array(z.string().max(200)).max(20).optional(),
   quantity: z.number().int().min(1).max(100),
-  unitPrice: z.number().min(0),
-  subtotal: z.number().min(0),
   addedAt: z.string().default(new Date().toISOString()),
+  sportProductSlug: z.string().min(1).max(120).optional(),
+  sportWantsFrame: z.boolean().optional(),
+  citySlug: z.string().min(1).max(120).optional(),
+  citySizeKey: z.enum(['cube', 'minicube']).optional(),
 });
 
 const bundleCityEntrySchema = z.object({
@@ -105,13 +105,9 @@ const citiesBundleCartItemSchema = z.object({
   sizeLabel: z.string(),
   frameColor: z.string(),
   hasCover: z.boolean(),
-  coverPrice: z.number().min(0),
-  bundleDiscountPerExtraCity: z.number().min(0),
   cities: z.array(bundleCityEntrySchema).min(1).max(50),
   attributes: z.array(z.string().max(300)).max(40).optional(),
   quantity: z.number().int().min(1).max(100),
-  unitPrice: z.number().min(0),
-  subtotal: z.number().min(0),
   addedAt: z.string().default(new Date().toISOString()),
 });
 
@@ -127,8 +123,6 @@ export const createOrderSchema = z.object({
   deliveryMethod: z.enum(['shipping', 'pickup']),
   notes: z.string().max(1000).default(''),
   couponCode: z.string().max(40).optional(),
-  /** Client-computed discount in ₪; server clamps to line subtotal. */
-  discountAmount: z.number().min(0).optional(),
 });
 
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;

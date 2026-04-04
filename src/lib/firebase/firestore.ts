@@ -1,4 +1,6 @@
 export const FIRESTORE_COLLECTIONS = {
+  /** Global storefront pricing: document `pricing` (shipping, cover, bundles, etc.). */
+  settings: 'settings',
   /** City catalog + pricing; admin CRUD + public list in cities wizard. */
   cities: 'cities',
   orders: 'orders',

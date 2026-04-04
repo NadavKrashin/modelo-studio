@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { stripOrderLookupToken } from '@/lib/admin-session';
 import { getOrderService } from '@/lib/services/container';
 import { parseBody } from '@/lib/validation/api-helpers';
 import { orderStatusUpdateSchema } from '@/lib/validation';
@@ -24,7 +25,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
-    return NextResponse.json(updated);
+    return NextResponse.json(stripOrderLookupToken(updated));
   } catch (err) {
     console.error('[API] Order status update error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

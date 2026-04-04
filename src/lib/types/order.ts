@@ -44,6 +44,8 @@ export interface Order {
   subtotal: number;
   shippingCost: number;
   total: number;
+  /** Opaque secret for customer order lookup; stored in DB, never returned from APIs. */
+  customerLookupToken?: string;
   /** Optional coupon snapshot when discount was applied at checkout. */
   couponCode?: string;
   discountAmount?: number;
@@ -67,4 +69,6 @@ export interface OrderConfirmation {
   orderNumber: string;
   estimatedDate?: string;
   status: OrderStatus;
+  /** Pass as `token` query param when calling GET /api/orders/:id as the customer. */
+  lookupToken: string;
 }

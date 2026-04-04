@@ -1,36 +1,59 @@
-"use client";
-
 import Image from "next/image";
 import Link from "next/link";
+import { listActiveSportProductsAdmin } from "@/lib/firebase/sport-products-admin";
 
-const PRODUCTS = [
-  {
-    slug: "route",
-    title: "משושה מסלול",
+/** Firestore is source of truth for active products and prices — avoid stale static HTML. */
+export const dynamic = "force-dynamic";
+import { buildSportProductThumbnailUrlForBucket } from "@/lib/firebase/sport-products";
+import type { SportProduct } from "@/lib/types/sport-product";
+
+const SLUG_FALLBACK: Record<string, { desc: string; localImage: string }> = {
+  route: {
     desc: "העלו קובץ GPX מ-Strava או Garmin והפכו את המסלול למודל טופוגרפי תלת־ממדי.",
-    price: 189,
-    image: "/images/sport/map.jpeg",
-    href: "/sport/route",
+    localImage: "/images/sport/map.jpeg",
   },
-  {
-    slug: "medal",
-    title: "משושה מדליה",
+  medal: {
     desc: "משושה ייעודי עם מתלה אינטגרלי להצגת המדליות שהרווחתם בזיעה.",
-    price: 89,
-    image: "/images/sport/medal.jpeg",
-    href: "/sport/medal",
+    localImage: "/images/sport/medal.jpeg",
   },
-  {
-    slug: "details",
-    title: "משושה תיאור מירוץ",
+  details: {
     desc: "הנציחו את הרגע: שם המירוץ, תאריך וזמן הסיום המדויק שלכם מובלטים בתלת־ממד.",
-    price: 129,
-    image: "/images/sport/detail.jpeg",
-    href: "/sport/details",
+    localImage: "/images/sport/detail.jpeg",
   },
-] as const;
+};
 
-export default function SportPage() {
+const STORE_SLUG_ORDER = ["route", "medal", "details"] as const;
+
+function sortSportProductsForStorefront(products: SportProduct[]): SportProduct[] {
+  return [...products].sort((a, b) => {
+    const ia = (STORE_SLUG_ORDER as readonly string[]).indexOf(a.slug);
+    const ib = (STORE_SLUG_ORDER as readonly string[]).indexOf(b.slug);
+    if (ia !== -1 || ib !== -1) {
+      if (ia === -1) return 1;
+      if (ib === -1) return -1;
+      return ia - ib;
+    }
+    return a.nameHe.localeCompare(b.nameHe, "he");
+  });
+}
+
+function sportWizardHref(slug: string): string {
+  return `/sport/${slug}`;
+}
+
+function resolveCardImageSrc(product: SportProduct): string {
+  if (product.imageUrl?.startsWith("http")) return product.imageUrl;
+  const bucket =
+    process.env.FIREBASE_STORAGE_BUCKET ?? process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+  const remote = buildSportProductThumbnailUrlForBucket(bucket, product.slug);
+  if (remote) return remote;
+  return SLUG_FALLBACK[product.slug]?.localImage ?? "/images/sport-sample.jpeg";
+}
+
+export default async function SportPage() {
+  const raw = await listActiveSportProductsAdmin();
+  const products = sortSportProductsForStorefront(raw);
+
   return (
     <div className="bg-white text-slate-900" dir="rtl">
       {/* ── Hero ── */}
@@ -61,30 +84,54 @@ export default function SportPage() {
       <section className="max-w-7xl mx-auto py-24 px-6">
         <h2 className="text-4xl font-bold text-center mb-16">בחרו את המשושה הבא שלכם</h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-          {PRODUCTS.map((p) => (
-            <Link
-              key={p.slug}
-              href={p.href}
-              className="group flex flex-col items-center text-center rounded-2xl border border-slate-200 bg-white overflow-hidden transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
-            >
-              <div className="w-full aspect-[4/3] relative bg-slate-100">
-                <Image src={p.image} alt={p.title} fill className="object-cover" />
-              </div>
+        {products.length === 0 ? (
+          <p className="text-center text-slate-500 text-lg max-w-xl mx-auto">
+            אין מוצרי ספורט פעילים להצגה כרגע. חזרו בקרוב או פנו אלינו לפרטים.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+            {products.map((p) => {
+              const fallback = SLUG_FALLBACK[p.slug];
+              const desc = fallback?.desc ?? "";
+              const imageSrc = resolveCardImageSrc(p);
 
-              <div className="p-8 flex flex-col items-center flex-1">
-                <h3 className="text-xl font-bold mb-3">{p.title}</h3>
-                <p className="text-sm text-slate-500 leading-relaxed mb-6 max-w-[280px]">{p.desc}</p>
+              return (
+                <Link
+                  key={p.id}
+                  href={sportWizardHref(p.slug)}
+                  className="group flex flex-col items-center text-center rounded-2xl border border-slate-200 bg-white overflow-hidden transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
+                >
+                  <div className="w-full aspect-[4/3] relative bg-slate-100">
+                    <Image
+                      src={imageSrc}
+                      alt={p.nameHe}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 100vw, 33vw"
+                    />
+                  </div>
 
-                <p className="text-2xl font-extrabold mb-6">₪{p.price}</p>
+                  <div className="p-8 flex flex-col items-center flex-1">
+                    <h3 className="text-xl font-bold mb-3">{p.nameHe}</h3>
+                    {desc ? (
+                      <p className="text-sm text-slate-500 leading-relaxed mb-6 max-w-[280px]">{desc}</p>
+                    ) : (
+                      <p className="text-sm text-slate-500 leading-relaxed mb-6 max-w-[280px]">
+                        עצבו את המשושה שלכם.
+                      </p>
+                    )}
 
-                <span className="mt-auto rounded-xl bg-black text-white py-3 px-8 text-sm font-bold group-hover:bg-slate-800 transition-colors">
-                  עצבו עכשיו
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
+                    <p className="text-lg font-bold text-slate-900 mb-6 tabular-nums">₪{p.basePrice}</p>
+
+                    <span className="mt-auto rounded-xl bg-black text-white py-3 px-8 text-sm font-bold group-hover:bg-slate-800 transition-colors">
+                      עצבו עכשיו
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </section>
     </div>
   );

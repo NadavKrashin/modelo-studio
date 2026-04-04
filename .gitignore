@@ -32,6 +32,13 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# production secrets for Firebase Web Frameworks / Cloud Functions (never commit)
+.env.production
+
+# firebase (local Web Frameworks output — do not commit)
+.firebase/
+firebase-debug.log
+.runtimeconfig.json
 
 # vercel
 .vercel

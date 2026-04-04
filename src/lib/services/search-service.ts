@@ -330,13 +330,16 @@ export class SearchService {
           if (!isUp) return [] as NormalizedModel[];
 
           if ('getPopularModels' in provider && typeof (provider as Record<string, unknown>).getPopularModels === 'function') {
-            const models = await (provider as { getPopularModels: (n: number) => Promise<NormalizedModel[]> }).getPopularModels(perProvider);
+            const raw = await (provider as { getPopularModels: (n: number) => Promise<NormalizedModel[]> }).getPopularModels(
+              perProvider,
+            );
+            const models = filterPopularNormalizedModels(raw);
             this.catalogService.ingestNormalized(provider.id, models);
             return models;
           }
 
           const results = await provider.search('popular', { limit: perProvider });
-          const models = results.map((r) => r.model);
+          const models = filterPopularNormalizedModels(results.map((r) => r?.model));
           this.catalogService.ingestNormalized(provider.id, models);
           return models;
         } catch (err) {
@@ -345,14 +348,15 @@ export class SearchService {
         }
       });
 
-      let allExternal = (await Promise.all(fetches)).flat();
+      let allExternal = filterPopularNormalizedModels((await Promise.all(fetches)).flat());
 
       // Enrich popular models with unknown license before filtering
-      if (this.registry && allExternal.some((m) => m.license.commercialUse === 'unknown')) {
-        const unknowns = allExternal.filter((m) => m.license.commercialUse === 'unknown');
+      if (this.registry && allExternal.some((m) => m?.license?.commercialUse === 'unknown')) {
+        const unknowns = allExternal.filter((m) => m?.license?.commercialUse === 'unknown');
         const byProvider = new Map<string, ProviderResult[]>();
         for (const m of unknowns) {
-          const pid = m.source.name;
+          const pid = m.source?.name;
+          if (!pid) continue;
           const bucket = byProvider.get(pid) ?? [];
           bucket.push({ providerId: pid, externalId: m.externalId, model: m });
           byProvider.set(pid, bucket);
@@ -372,10 +376,11 @@ export class SearchService {
       }
 
       allExternal = allExternal.filter((m) => {
-        const pid = m.source.name;
+        const pid = m.source?.name ?? '';
+        if (!pid || !m.license) return false;
         if (!isStorefrontEligible(m, pid)) {
           if (process.env.NODE_ENV === 'development') {
-            console.log(`${TAG} Popular: ${storefrontEligibilityReason(m, pid)} — "${m.name}"`);
+            console.log(`${TAG} Popular: ${storefrontEligibilityReason(m, pid)} — "${m.name ?? ''}"`);
           }
           return false;
         }
@@ -389,22 +394,15 @@ export class SearchService {
 
       if (allExternal.length === 0) return catalogPopular;
 
+      const { unique: uniqueExternal } = deduplicate(allExternal);
       const catalogIds = new Set(catalogPopular.map((m) => m.id));
-      const externalSummaries = allExternal
-        .filter((m) => !catalogIds.has(m.id))
-        .map(toSummary);
+      const externalSummaries = uniqueExternal
+        .filter((m) => m.id && !catalogIds.has(m.id))
+        .map((m) => toSummary(m));
 
       const merged = [...catalogPopular, ...externalSummaries];
-
-      const allModels = merged as unknown as NormalizedModel[];
-      const { unique } = deduplicate(allModels);
-      const dedupedSummaries = unique.map((m) => {
-        const existing = merged.find((s) => s.id === m.id);
-        return existing ?? toSummary(m);
-      });
-
-      dedupedSummaries.sort((a, b) => b.popularityScore - a.popularityScore);
-      return dedupedSummaries.slice(0, limit);
+      merged.sort((a, b) => b.popularityScore - a.popularityScore);
+      return merged.slice(0, limit);
     } catch (err) {
       console.warn(`${TAG} External popular fetch failed, using catalog:`, (err as Error).message);
       return catalogPopular;
@@ -480,19 +478,43 @@ export class SearchService {
   }
 }
 
+function filterPopularNormalizedModels(
+  models: Array<NormalizedModel | null | undefined>,
+): NormalizedModel[] {
+  return models.filter(isCoarseNormalizedModel);
+}
+
+function isCoarseNormalizedModel(m: unknown): m is NormalizedModel {
+  if (m === null || typeof m !== 'object') return false;
+  const x = m as Partial<NormalizedModel>;
+  const src = x.source;
+  const lic = x.license;
+  return (
+    typeof x.id === 'string' &&
+    typeof x.externalId === 'string' &&
+    typeof x.name === 'string' &&
+    src != null &&
+    typeof src === 'object' &&
+    typeof src.name === 'string' &&
+    lic != null &&
+    typeof lic === 'object' &&
+    typeof lic.commercialUse === 'string'
+  );
+}
+
 function toSummary(m: NormalizedModel): ModelSummary {
-  const img = m.images[0];
+  const img = m.images?.[0];
   return {
     id: m.id,
-    name: m.name,
-    localizedName: m.localizedName,
+    name: m.name ?? '',
+    localizedName: m.localizedName ?? m.name ?? '',
     thumbnailUrl: img?.mediumUrl ?? img?.cachedUrl ?? img?.url ?? '',
-    category: m.categories[0] ?? '',
-    sourceName: m.source.displayName,
-    popularityScore: m.popularityScore,
-    estimatedBasePrice: m.estimatedBasePrice,
-    availability: m.availability,
-    commercialUse: m.license.commercialUse,
+    category: m.categories?.[0] ?? '',
+    sourceName: m.source?.displayName ?? '',
+    popularityScore: m.popularityScore ?? 0,
+    estimatedBasePrice: m.estimatedBasePrice ?? 0,
+    availability: m.availability ?? 'pending_review',
+    commercialUse: m.license?.commercialUse ?? 'unknown',
     lowResThumbnailUrl: img?.thumbnailUrl,
     mediumImageUrl: img?.mediumUrl,
   };

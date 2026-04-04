@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { FileText } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { FileText, Settings } from 'lucide-react';
 
 const NAV_ITEMS = [
   {
@@ -87,11 +87,27 @@ const NAV_ITEMS = [
     label: 'עמודי תוכן',
     icon: <FileText className="w-5 h-5" strokeWidth={1.5} />,
   },
+  {
+    href: '/admin/settings',
+    label: 'הגדרות כלליות',
+    icon: <Settings className="w-5 h-5" strokeWidth={1.5} />,
+  },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  if (pathname === '/admin/login') {
+    return <>{children}</>;
+  }
+
+  async function handleLogout() {
+    await fetch('/api/admin/logout', { method: 'POST' });
+    router.replace('/admin/login');
+    router.refresh();
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -118,6 +134,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </Link>
 
         <div className="flex-1" />
+
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="text-xs text-gray-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-gray-800 me-2"
+        >
+          יציאה
+        </button>
 
         <Link
           href="/"

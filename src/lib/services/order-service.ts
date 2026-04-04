@@ -1,8 +1,10 @@
+import { randomBytes } from 'node:crypto';
 import { v4 as uuid } from 'uuid';
 import type { Order, OrderStatus, OrderConfirmation } from '@/lib/types';
 import type { CreateOrderInput } from '@/lib/validation';
 import type { OrderRepository, AnalyticsRepository } from '@/lib/repositories';
 import type { PricingService } from './pricing-service';
+import { OrderPricingError } from './pricing-service';
 
 /**
  * Generates a 7-character uppercase alphanumeric order number.
@@ -25,29 +27,21 @@ export class OrderService {
   ) {}
 
   async create(input: CreateOrderInput): Promise<OrderConfirmation> {
-    const lineItems = input.items.map((item) => {
-      const unitPrice = this.pricing.calculateItemPrice(item);
-      return {
-        ...item,
-        unitPrice,
-        subtotal: unitPrice * item.quantity,
-      };
+    const totals = await this.pricing.calculateSecureOrderTotal(input.items, {
+      couponCode: input.couponCode,
+      deliveryMethod: input.deliveryMethod,
     });
 
-    const subtotal = lineItems.reduce((sum, li) => sum + li.subtotal, 0);
-    const shippingCost = input.deliveryMethod === 'shipping' ? 35 : 0;
-    const requestedDiscount = Math.min(
-      Math.max(0, input.discountAmount ?? 0),
-      subtotal,
-    );
-    const discountAmount =
-      Math.round(requestedDiscount * 100) / 100;
-    const total = Math.max(0, subtotal - discountAmount + shippingCost);
+    const lineItems = totals.lineItems;
+    const subtotal = totals.merchandiseSubtotal;
+    const discountAmount = totals.discountAmount;
+    const shippingCost = totals.shippingCost;
+    const total = totals.total;
 
     const requiresApproval = lineItems.some(
       (li) =>
         li.kind === 'studio_model' &&
-        (li.customization.embossedText || (li.customization.referenceImages?.length ?? 0) > 0)
+        (li.customization.embossedText || (li.customization.referenceImages?.length ?? 0) > 0),
     );
 
     const now = new Date().toISOString();
@@ -56,9 +50,12 @@ export class OrderService {
     const estimatedDate = new Date();
     estimatedDate.setDate(estimatedDate.getDate() + (requiresApproval ? 7 : 5));
 
+    const customerLookupToken = randomBytes(32).toString('base64url');
+
     const order: Order = {
       id: uuid(),
       orderNumber: generateOrderNumber(),
+      customerLookupToken,
       customer: input.customer,
       items: lineItems,
       subtotal,
@@ -67,9 +64,7 @@ export class OrderService {
       ...(discountAmount > 0
         ? {
             discountAmount,
-            ...(input.couponCode?.trim()
-              ? { couponCode: input.couponCode.trim().toUpperCase() }
-              : {}),
+            ...(totals.couponCode ? { couponCode: totals.couponCode } : {}),
           }
         : {}),
       deliveryMethod: input.deliveryMethod,
@@ -96,6 +91,7 @@ export class OrderService {
       orderNumber: created.orderNumber,
       status: created.status,
       estimatedDate: estimatedDate.toISOString().slice(0, 10),
+      lookupToken: customerLookupToken,
     };
   }
 
@@ -133,3 +129,5 @@ export class OrderService {
     });
   }
 }
+
+export { OrderPricingError } from './pricing-service';

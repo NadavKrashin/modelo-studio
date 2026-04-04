@@ -3,7 +3,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { collection, getDocs, limit, query, where } from 'firebase/firestore';
-import type { AppliedCoupon, Cart, CartItem } from '@/lib/types';
+import type { AppliedCoupon, Cart, CartItem, NewCartItem } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 import { getFirebaseClientFirestore } from '@/lib/firebase/client';
 import { COUPONS_COLLECTION, docToCoupon } from '@/lib/firebase/coupons';
@@ -13,7 +13,7 @@ interface CartStore extends Cart {
   appliedCoupon: AppliedCoupon | null;
   openCart: () => void;
   closeCart: () => void;
-  addItem: (item: Omit<CartItem, 'id' | 'addedAt'>) => void;
+  addItem: (item: NewCartItem) => void;
   removeItem: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
   clearCart: () => void;
@@ -21,10 +21,15 @@ interface CartStore extends Cart {
   removeCoupon: () => void;
 }
 
+function lineSubtotal(item: CartItem): number {
+  const u = item.unitPrice ?? 0;
+  return u * item.quantity;
+}
+
 function recalculateCart(items: CartItem[]): Pick<Cart, 'totalItems' | 'subtotal'> {
   return {
     totalItems: items.reduce((sum, item) => sum + item.quantity, 0),
-    subtotal: items.reduce((sum, item) => sum + item.subtotal, 0),
+    subtotal: items.reduce((sum, item) => sum + lineSubtotal(item), 0),
   };
 }
 
@@ -130,7 +135,11 @@ export const useCartStore = create<CartStore>()(
         set((state) => {
           const newItems = state.items.map((item) =>
             item.id === itemId
-              ? { ...item, quantity, subtotal: item.unitPrice * quantity }
+              ? {
+                  ...item,
+                  quantity,
+                  subtotal: (item.unitPrice ?? 0) * quantity,
+                }
               : item,
           );
           return {

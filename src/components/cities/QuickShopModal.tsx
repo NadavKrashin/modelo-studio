@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Minus, Plus, X } from "lucide-react";
 import { buildCityStorageImageUrls, type CitySizeKey } from "@/lib/firebase/cities";
 import { useCartStore } from "@/lib/store";
-import type { CartItem } from "@/lib/types";
+import type { NewCartItem } from "@/lib/types";
 
 const COVER_PRICE = 150;
 const BUNDLE_DISCOUNT_PER_EXTRA_CITY = 20;
@@ -83,14 +83,12 @@ export function QuickShopModal({ city, onClose }: Props) {
       sizeLabel: sizeMeta.dims,
       frameColor,
       hasCover,
-      coverPrice: COVER_PRICE,
-      bundleDiscountPerExtraCity: BUNDLE_DISCOUNT_PER_EXTRA_CITY,
       cities: [{ name: city.name, slug: city.slug, imageUrl: imageSrc || city.image }],
       quantity: 1,
       unitPrice: totalPrice,
       subtotal: totalPrice,
       attributes: attrs,
-    } as Omit<CartItem, "id" | "addedAt">);
+    } satisfies NewCartItem);
 
     openCart();
     onClose();

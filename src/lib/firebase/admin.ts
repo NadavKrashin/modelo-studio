@@ -1,5 +1,5 @@
 import { cert, getApps, initializeApp, type App, type ServiceAccount } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 
 function hasEnv(name: string): boolean {
   return !!process.env[name] && process.env[name]!.trim().length > 0;
@@ -32,6 +32,7 @@ function buildServiceAccountFromFields(): ServiceAccount | null {
 }
 
 let cachedApp: App | null = null;
+let cachedFirestore: Firestore | null = null;
 
 export function isFirebaseAdminConfigured(): boolean {
   return !!parseServiceAccountFromEnv() || !!buildServiceAccountFromFields();
@@ -58,6 +59,10 @@ export function getFirebaseAdminApp(): App {
   return cachedApp;
 }
 
-export function getFirestoreAdmin() {
-  return getFirestore(getFirebaseAdminApp());
+export function getFirestoreAdmin(): Firestore {
+  if (cachedFirestore) return cachedFirestore;
+  const db = getFirestore(getFirebaseAdminApp());
+  db.settings({ ignoreUndefinedProperties: true });
+  cachedFirestore = db;
+  return cachedFirestore;
 }

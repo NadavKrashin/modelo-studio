@@ -1,12 +1,13 @@
 import Link from 'next/link';
 
 interface Props {
-  searchParams: Promise<{ orderNumber?: string }>;
+  searchParams: Promise<{ orderNumber?: string; token?: string }>;
 }
 
 export default async function OrderConfirmationPage({ searchParams }: Props) {
   const params = await searchParams;
   const orderNumber = params.orderNumber ?? 'MDL-0000';
+  const token = params.token ?? '';
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24 text-center animate-fade-in">
@@ -33,7 +34,7 @@ export default async function OrderConfirmationPage({ searchParams }: Props) {
         </p>
         <div className="border-t border-border mt-4 pt-4">
           <p className="text-xs text-muted leading-relaxed">
-            שמרו את מספר ההזמנה — תוכלו להשתמש בו למעקב בכל עת
+            שמרו את הקישור מדף זה או את מספר ההזמנה יחד עם קוד המעקב — נדרשים למעקב אחר ההזמנה
           </p>
         </div>
       </div>
@@ -65,7 +66,7 @@ export default async function OrderConfirmationPage({ searchParams }: Props) {
 
       <div className="flex flex-col sm:flex-row gap-3 justify-center">
         <Link
-          href={`/studio/order/track?orderNumber=${orderNumber}`}
+          href={`/studio/order/track?orderNumber=${encodeURIComponent(orderNumber)}${token ? `&token=${encodeURIComponent(token)}` : ''}`}
           className="inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary-hover text-white px-7 py-3.5 rounded-2xl font-semibold transition-all shadow-lg shadow-primary/20"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

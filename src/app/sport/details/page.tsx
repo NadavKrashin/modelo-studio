@@ -7,8 +7,6 @@ import { hexNeedsLightBorder } from "@/lib/firebase/sport-filaments";
 import type { Filament } from "@/lib/types";
 import { useCartStore } from "@/lib/store";
 
-const PRICE = 129;
-
 function hexForName(items: Filament[], name: string): string {
   return items.find((f) => f.name === name)?.hexColor ?? "#0f172a";
 }
@@ -65,6 +63,7 @@ export default function SportDetailsPage() {
       title: "משושה תיאור מירוץ",
       imageUrl: "/images/sport/detail.jpeg",
       department: "sport",
+      sportProductSlug: "details",
       attributes: [
         `כותרת: ${line1}`,
         line2 ? `שורה 2: ${line2}` : "שורה 2: -",
@@ -75,8 +74,8 @@ export default function SportDetailsPage() {
         `צבע מסגרת: ${frameColor}`,
       ],
       quantity: 1,
-      unitPrice: PRICE,
-      subtotal: PRICE,
+      unitPrice: 0,
+      subtotal: 0,
     });
     openCart();
   };
@@ -132,7 +131,7 @@ export default function SportDetailsPage() {
           </div>
           <div className="mt-5 rounded-xl border border-slate-200 p-4 bg-slate-50">
             <p className="text-sm text-slate-500">מחיר</p>
-            <p className="text-3xl font-extrabold text-slate-900">₪{PRICE}</p>
+            <p className="text-3xl font-extrabold text-slate-900">לפי המחירון</p>
           </div>
         </aside>
 
@@ -331,7 +330,7 @@ export default function SportDetailsPage() {
                   <Row label="צבע מסגרת" value={frameColor} />
                   <div className="border-t border-slate-200 pt-3 flex justify-between gap-4">
                     <span className="font-bold text-slate-900">סה&quot;כ</span>
-                    <span className="text-xl font-extrabold text-black">₪{PRICE}</span>
+                    <span className="text-xl font-extrabold text-black">לפי המחירון</span>
                   </div>
                 </div>
 
@@ -340,7 +339,7 @@ export default function SportDetailsPage() {
                   disabled={!frameColor || !titleColor}
                   className="mt-6 w-full rounded-2xl bg-black px-6 py-4 text-white font-bold text-lg hover:bg-slate-800 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  הוסף לסל — ₪{PRICE}
+                  הוסף לסל
                 </button>
               </div>
             )}

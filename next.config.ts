@@ -7,7 +7,11 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: '**.thingiverse.com' },
       { protocol: 'https', hostname: '**.printables.com' },
       { protocol: 'https', hostname: '**.myminifactory.com' },
-      { protocol: 'https', hostname: 'firebasestorage.googleapis.com' },
+      {
+        protocol: 'https',
+        hostname: 'firebasestorage.googleapis.com',
+        pathname: '/**',
+      },
     ],
   },
 };

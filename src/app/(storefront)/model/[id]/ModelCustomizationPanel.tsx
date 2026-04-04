@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, type ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import type { FilamentOption, ModelDimensions } from '@/lib/types';
+import type { FilamentOption, ModelDimensions, NewCartItem } from '@/lib/types';
 import { calculatePrice, formatPrice } from '@/lib/pricing';
 import { useCartStore } from '@/lib/store';
 
@@ -74,7 +74,7 @@ export function ModelCustomizationPanel({ model, filaments }: Props) {
     );
   }
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
     const newFiles: UploadedFile[] = Array.from(files).map((f) => ({
@@ -109,7 +109,7 @@ export function ModelCustomizationPanel({ model, filaments }: Props) {
       quantity,
       unitPrice: priceBreakdown.unitPrice,
       subtotal: priceBreakdown.subtotal,
-    });
+    } satisfies NewCartItem);
     setAddedToCart(true);
     setTimeout(() => router.push('/cart'), 600);
   };

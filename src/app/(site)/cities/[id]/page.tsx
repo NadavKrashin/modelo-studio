@@ -6,7 +6,7 @@ import Image from "next/image";
 import { Check, ChevronDown, Plus, Minus, Search, X } from "lucide-react";
 import { getCities, type CityDoc, type CitySizeKey } from "@/lib/firebase/cities";
 import { useCartStore } from "@/lib/store";
-import type { CartItem } from "@/lib/types";
+import type { NewCartItem } from "@/lib/types";
 
 /* ------------------------------------------------------------------ */
 /*  Static data                                                        */
@@ -355,14 +355,12 @@ export default function CitiesConfiguratorPage() {
       sizeLabel: product.dims,
       frameColor,
       hasCover,
-      coverPrice: COVER_PRICE,
-      bundleDiscountPerExtraCity: BUNDLE_DISCOUNT_PER_EXTRA_CITY,
       cities: selectedCitiesPayload.map(({ name, slug, imageUrl }) => ({ name, slug, imageUrl })),
       quantity: 1,
       unitPrice: totalPrice,
       subtotal: totalPrice,
       attributes: attrs,
-    } as Omit<CartItem, "id" | "addedAt">);
+    } satisfies NewCartItem);
     openCart();
   };
 

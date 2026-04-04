@@ -7,9 +7,6 @@ import { useSportFilaments } from "@/hooks/useSportFilaments";
 import { hexNeedsLightBorder } from "@/lib/firebase/sport-filaments";
 import { useCartStore } from "@/lib/store";
 
-const BASE_PRICE = 189;
-const FRAME_ADDON = 50;
-
 export default function SportRoutePage() {
   const addItem = useCartStore((s) => s.addItem);
   const openCart = useCartStore((s) => s.openCart);
@@ -25,7 +22,6 @@ export default function SportRoutePage() {
   const frameColor = frameColorChoice ?? sportFilaments[0]?.name ?? "";
 
   const totalSteps = 5;
-  const totalPrice = useMemo(() => BASE_PRICE + (wantsFrame ? FRAME_ADDON : 0), [wantsFrame]);
   const progress = ((step + 1) / totalSteps) * 100;
 
   const canGoNext = useMemo(() => {
@@ -51,6 +47,8 @@ export default function SportRoutePage() {
       title: "משושה מסלול",
       imageUrl: "/images/sport/map.jpeg",
       department: "sport",
+      sportProductSlug: "route",
+      sportWantsFrame: wantsFrame,
       attributes: [
         `אירוע: ${raceName || "-"}`,
         `משתתף: ${participantName || "-"}`,
@@ -60,8 +58,8 @@ export default function SportRoutePage() {
         uploadedFile ? `קובץ: ${uploadedFile.name}` : "ללא קובץ",
       ],
       quantity: 1,
-      unitPrice: totalPrice,
-      subtotal: totalPrice,
+      unitPrice: 0,
+      subtotal: 0,
     });
     openCart();
   };
@@ -81,8 +79,8 @@ export default function SportRoutePage() {
             <Image src="/images/sport/map.jpeg" alt="משושה מסלול" fill className="object-cover" />
           </div>
           <div className="mt-5 rounded-xl border border-slate-200 p-4 bg-slate-50">
-            <p className="text-sm text-slate-500">מחיר נוכחי</p>
-            <p className="text-3xl font-extrabold text-slate-900">₪{totalPrice}</p>
+            <p className="text-sm text-slate-500">מחיר</p>
+            <p className="text-3xl font-extrabold text-slate-900">לפי המחירון</p>
           </div>
         </aside>
 
@@ -244,7 +242,7 @@ export default function SportRoutePage() {
                   <Row label="צבע מסגרת" value={frameColor} />
                   <div className="border-t border-slate-200 pt-3 flex justify-between gap-4">
                     <span className="font-bold text-slate-900">סה&quot;כ</span>
-                    <span className="text-xl font-extrabold text-black">₪{totalPrice}</span>
+                    <span className="text-xl font-extrabold text-black">לפי המחירון</span>
                   </div>
                 </div>
                 <button
@@ -252,7 +250,7 @@ export default function SportRoutePage() {
                   disabled={!frameColor}
                   className="mt-6 w-full rounded-2xl bg-black px-6 py-4 text-white font-bold text-lg hover:bg-slate-800 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  הוסף לסל — ₪{totalPrice}
+                  הוסף לסל
                 </button>
               </div>
             )}

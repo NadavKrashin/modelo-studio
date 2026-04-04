@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
+import { stripOrderLookupToken } from '@/lib/admin-session';
 import { getOrderService, getSearchService } from '@/lib/services/container';
+import { OrderPricingError } from '@/lib/services/order-service';
 import { parseBody, parseSearchParams } from '@/lib/validation/api-helpers';
 import { createOrderSchema, adminOrdersQuerySchema } from '@/lib/validation';
 
@@ -15,7 +17,10 @@ export async function GET(request: Request) {
       pageSize: result.data.pageSize,
     });
 
-    return NextResponse.json(orders);
+    return NextResponse.json({
+      ...orders,
+      items: orders.items.map((o) => stripOrderLookupToken(o)),
+    });
   } catch (err) {
     console.error('[API] Orders list error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -47,11 +52,13 @@ export async function POST(request: Request) {
       deliveryMethod: result.data.deliveryMethod,
       notes: result.data.notes,
       couponCode: result.data.couponCode,
-      discountAmount: result.data.discountAmount,
     });
 
     return NextResponse.json(confirmation, { status: 201 });
   } catch (err) {
+    if (err instanceof OrderPricingError) {
+      return NextResponse.json({ error: err.message }, { status: err.statusCode });
+    }
     console.error('[API] Order creation error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

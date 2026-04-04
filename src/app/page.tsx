@@ -98,7 +98,6 @@ const TRUST_ITEMS = [
   { icon: MapPin, label: "דיוק טופוגרפי מדויק" },
 ];
 
-const STUDIO_WORLD = WORLDS.find((w) => w.href === "/studio");
 const WORLDS_VISIBLE = WORLDS.filter((w) => w.href !== "/studio");
 
 export default function HomePage() {
@@ -156,30 +155,6 @@ export default function HomePage() {
           </p>
 
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 sm:gap-10 lg:grid-cols-3">
-            {false &&
-              STUDIO_WORLD && (
-                <Link
-                  key={STUDIO_WORLD.title}
-                  href={STUDIO_WORLD.href}
-                  className="group flex flex-col items-center rounded-2xl border border-slate-100 bg-white p-8 text-center shadow-sm transition-all duration-300 ease-out hover:-translate-y-2 hover:border-slate-300/50 hover:shadow-xl hover:shadow-slate-200/60"
-                >
-                  <div
-                    className={`mb-6 flex h-24 w-24 scale-100 items-center justify-center rounded-xl ${STUDIO_WORLD.accentBg} ${STUDIO_WORLD.accent} transition-transform duration-300 ease-out group-hover:scale-105`}
-                  >
-                    {STUDIO_WORLD.icon}
-                  </div>
-                  <h3 className="mb-2 text-lg font-semibold text-slate-900">{STUDIO_WORLD.title}</h3>
-                  <p className="mb-6 flex-1 text-sm leading-relaxed text-slate-500">{STUDIO_WORLD.desc}</p>
-                  <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-700 transition-colors group-hover:text-black">
-                    גלה עוד
-                    <ArrowLeft
-                      className="h-3.5 w-3.5 transition-transform duration-300 ease-out group-hover:-translate-x-1.5"
-                      strokeWidth={2.5}
-                    />
-                  </span>
-                </Link>
-              )}
-
             {WORLDS_VISIBLE.map((w) => (
               <Link
                 key={w.title}

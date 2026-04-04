@@ -62,11 +62,16 @@ export function mapSportProductDocument(
 }
 
 /** Default Storage layout: `sport-products/{slug}/thumbnail.jpeg` */
-export function buildSportProductThumbnailUrl(slug: string): string {
-  const bucket = getFirebaseClientApp().options.storageBucket;
+export function buildSportProductThumbnailUrlForBucket(bucket: string | undefined, slug: string): string {
   if (!bucket || !slug) return '';
   const objectPath = `sport-products/${slug}/thumbnail.jpeg`;
   return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(objectPath)}?alt=media`;
+}
+
+/** Default Storage layout: `sport-products/{slug}/thumbnail.jpeg` */
+export function buildSportProductThumbnailUrl(slug: string): string {
+  const bucket = getFirebaseClientApp().options.storageBucket;
+  return buildSportProductThumbnailUrlForBucket(bucket, slug);
 }
 
 export function getSportProductThumbnailUrl(p: SportProduct): string {

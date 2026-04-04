@@ -102,8 +102,6 @@ class ServiceContainer {
 
     // ── Services ───────────────────────────────────────────
     this.filamentService = new FilamentService(this.filaments);
-    this.pricingService = new PricingService(this.filaments);
-    this.orderService = new OrderService(this.orders, this.pricingService, this.analytics);
     this.searchService = new SearchService(
       this.catalogStore,
       this.catalogService,
@@ -111,6 +109,8 @@ class ServiceContainer {
       this.searchAnalytics,
       this.providerRegistry,
     );
+    this.pricingService = new PricingService(this.filaments, this.searchService);
+    this.orderService = new OrderService(this.orders, this.pricingService, this.analytics);
 
     const catalogStats = this.catalogService.getStats();
     const realProviders = this.providerRegistry.getExternal().map((p) => p.id);

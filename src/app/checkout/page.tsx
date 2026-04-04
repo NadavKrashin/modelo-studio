@@ -81,7 +81,6 @@ export default function CheckoutPage() {
           items,
           deliveryMethod,
           notes: customerNotes,
-          discountAmount,
           couponCode: appliedCoupon?.code,
         }),
       });
@@ -93,9 +92,21 @@ export default function CheckoutPage() {
         return;
       }
 
-      const confirmation = await res.json();
+      const confirmation = await res.json() as {
+        orderNumber?: string;
+        lookupToken?: string;
+      };
+      if (!confirmation.lookupToken || !confirmation.orderNumber) {
+        alert('תשובת שרת לא תקינה. בדקו את ההזמנה או פנו לתמיכה.');
+        setIsSubmitting(false);
+        return;
+      }
       clearCart();
-      router.push(`/studio/order/confirmation?orderNumber=${confirmation.orderNumber}`);
+      const q = new URLSearchParams({
+        orderNumber: confirmation.orderNumber,
+        token: confirmation.lookupToken,
+      });
+      router.push(`/studio/order/confirmation?${q.toString()}`);
     } catch {
       alert('שגיאה בשליחת ההזמנה. נסו שוב.');
       setIsSubmitting(false);

@@ -27,9 +27,26 @@ const colorOptions = [
 ] as const;
 
 const sizeOptions = [
-  { id: 'minicube', label: 'מיני קובייה (10x10 ס״מ)', price: 159 },
-  { id: 'cube', label: 'קובייה (15x15 ס״מ)', price: 199 },
+  { id: 'minicube' as const, label: 'מיני קובייה (10x10 ס״מ)', price: 159 },
+  { id: 'cube' as const, label: 'קובייה (15x15 ס״מ)', price: 199 },
 ] as const;
+
+/** Hebrew labels from the form → Firestore city document ids (see scripts/seed-cities.mjs). */
+const CITY_NAME_TO_SLUG: Record<string, string> = {
+  'תל אביב': 'tel-aviv',
+  ירושלים: 'jerusalem',
+  'ניו יורק': 'neww-york',
+  מיאמי: 'miami',
+  'לאס וגאס': 'las-vegas',
+  ונציה: 'venice',
+  רומא: 'rome',
+  מילאנו: 'milan',
+  ברצלונה: 'barcelona',
+  לונדון: 'london',
+  פריז: 'paris',
+  דובאי: 'dubai',
+  'אבו דאבי': 'abu-dhabi',
+};
 
 export default function ModeloCitiesProductPage() {
   const addItem = useCartStore((s) => s.addItem);
@@ -55,11 +72,19 @@ export default function ModeloCitiesProductPage() {
   const handleAddToCart = () => {
     if (!selectedCity || !selectedSize || !selectedColor || !selectedSizeOption) return;
 
+    const citySlug = CITY_NAME_TO_SLUG[selectedCity];
+    if (!citySlug) {
+      alert('עיר לא מזוהה במערכת. השתמשו באשף הערים המעודכן.');
+      return;
+    }
+
     addItem({
       kind: 'simple',
       title: 'מודלו סיטיז - דגם תלת מימד',
       imageUrl: galleryImages[0],
       department: 'cities',
+      citySlug,
+      citySizeKey: selectedSize,
       attributes: [
         selectedCity,
         selectedSize === 'minicube' ? '10×10 ס״מ' : '15×15 ס״מ',

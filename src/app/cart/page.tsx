@@ -117,7 +117,7 @@ export default function CartPage() {
                           </li>
                           <li>
                             <span className="font-semibold text-foreground/80">כיסוי: </span>
-                            {item.hasCover ? `אקרילי (+₪${item.coverPrice})` : 'ללא כיסוי'}
+                            {item.hasCover ? 'אקרילי (מחיר לפי המחירון בעת התשלום)' : 'ללא כיסוי'}
                           </li>
                         </ul>
                         {item.attributes && item.attributes.length > 0 && (

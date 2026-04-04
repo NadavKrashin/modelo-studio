@@ -6,8 +6,6 @@ import { useSportFilaments } from "@/hooks/useSportFilaments";
 import { hexNeedsLightBorder } from "@/lib/firebase/sport-filaments";
 import { useCartStore } from "@/lib/store";
 
-const PRICE = 89;
-
 export default function SportMedalPage() {
   const addItem = useCartStore((s) => s.addItem);
   const openCart = useCartStore((s) => s.openCart);
@@ -42,10 +40,11 @@ export default function SportMedalPage() {
       title: "משושה מדליה",
       imageUrl: "/images/sport/medal.jpeg",
       department: "sport",
+      sportProductSlug: "medal",
       attributes: [`צבע: ${color}`],
       quantity: 1,
-      unitPrice: PRICE,
-      subtotal: PRICE,
+      unitPrice: 0,
+      subtotal: 0,
     });
     openCart();
   };
@@ -63,7 +62,7 @@ export default function SportMedalPage() {
           </div>
           <div className="mt-5 rounded-xl border border-slate-200 p-4 bg-slate-50">
             <p className="text-sm text-slate-500">מחיר</p>
-            <p className="text-3xl font-extrabold text-slate-900">₪{PRICE}</p>
+            <p className="text-3xl font-extrabold text-slate-900">לפי המחירון</p>
           </div>
         </aside>
 
@@ -139,7 +138,7 @@ export default function SportMedalPage() {
                   <Row label="צבע" value={color} />
                   <div className="border-t border-slate-200 pt-3 flex justify-between gap-4">
                     <span className="font-bold text-slate-900">סה&quot;כ</span>
-                    <span className="text-xl font-extrabold text-black">₪{PRICE}</span>
+                    <span className="text-xl font-extrabold text-black">לפי המחירון</span>
                   </div>
                 </div>
 
@@ -148,7 +147,7 @@ export default function SportMedalPage() {
                   disabled={!color}
                   className="mt-6 w-full rounded-2xl bg-black px-6 py-4 text-white font-bold text-lg hover:bg-slate-800 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  הוסף לסל — ₪{PRICE}
+                  הוסף לסל
                 </button>
               </div>
             )}
