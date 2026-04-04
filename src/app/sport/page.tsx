@@ -1,11 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { listActiveSportProductsAdmin } from "@/lib/firebase/sport-products-admin";
+import { buildSportProductThumbnailUrlForBucket } from "@/lib/firebase/sport-products";
+import type { SportProduct } from "@/lib/types/sport-product";
 
 /** Firestore is source of truth for active products and prices — avoid stale static HTML. */
 export const dynamic = "force-dynamic";
-import { buildSportProductThumbnailUrlForBucket } from "@/lib/firebase/sport-products";
-import type { SportProduct } from "@/lib/types/sport-product";
 
 const SLUG_FALLBACK: Record<string, { desc: string; localImage: string }> = {
   route: {
@@ -51,8 +51,14 @@ function resolveCardImageSrc(product: SportProduct): string {
 }
 
 export default async function SportPage() {
-  const raw = await listActiveSportProductsAdmin();
-  const products = sortSportProductsForStorefront(raw);
+  let products: SportProduct[] = [];
+  try {
+    const raw = await listActiveSportProductsAdmin();
+    products = sortSportProductsForStorefront(raw);
+  } catch (error) {
+    console.error("DEBUG SPORT ERROR:", error);
+    products = [];
+  }
 
   return (
     <div className="bg-white text-slate-900" dir="rtl">
