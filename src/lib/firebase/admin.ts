@@ -1,70 +1,118 @@
 import 'server-only';
 
-import { cert, getApps, initializeApp, type App, type ServiceAccount } from 'firebase-admin/app';
-import { getFirestore, type Firestore } from 'firebase-admin/firestore';
+import * as admin from 'firebase-admin';
 
-function hasEnv(name: string): boolean {
-  return !!process.env[name] && process.env[name]!.trim().length > 0;
+declare global {
+  // Ensures init logic runs only once per Node process (build workers / duplicate module evaluation).
+  // eslint-disable-next-line no-var
+  var __modeloFirebaseAdminSetupDone: boolean | undefined;
+  // Firestore settings() may only run once per process; guard across duplicate module evaluations.
+  // eslint-disable-next-line no-var
+  var __modeloFirestoreSettingsApplied: boolean | undefined;
 }
 
-function parseServiceAccountFromEnv(): ServiceAccount | null {
+const g = globalThis as typeof globalThis & {
+  __modeloFirebaseAdminSetupDone?: boolean;
+  __modeloFirestoreSettingsApplied?: boolean;
+};
+
+function tryInitializeFromServiceAccountJson(): void {
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-  if (!raw) return null;
+  if (!raw) return;
   try {
-    const parsed = JSON.parse(raw) as ServiceAccount;
-    if (parsed.privateKey) {
-      parsed.privateKey = parsed.privateKey.replace(/\\n/g, '\n');
-    }
-    return parsed;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const projectId =
+      (typeof parsed.project_id === 'string' && parsed.project_id) ||
+      (typeof parsed.projectId === 'string' && parsed.projectId) ||
+      '';
+    const clientEmail =
+      (typeof parsed.client_email === 'string' && parsed.client_email) ||
+      (typeof parsed.clientEmail === 'string' && parsed.clientEmail) ||
+      '';
+    let privateKey =
+      (typeof parsed.private_key === 'string' && parsed.private_key) ||
+      (typeof parsed.privateKey === 'string' && parsed.privateKey) ||
+      '';
+    if (privateKey) privateKey = privateKey.replace(/\\n/g, '\n');
+    if (!projectId || !clientEmail || !privateKey) return;
+    admin.initializeApp({
+      credential: admin.credential.cert({ projectId, clientEmail, privateKey }),
+      storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+    });
+    console.log('Firebase Admin Initialized Successfully');
   } catch (err) {
-    console.error('[FirebaseAdmin] Invalid FIREBASE_SERVICE_ACCOUNT_JSON:', (err as Error).message);
-    return null;
-  }
-}
-
-function buildServiceAccountFromFields(): ServiceAccount | null {
-  if (!hasEnv('FIREBASE_PROJECT_ID') || !hasEnv('FIREBASE_CLIENT_EMAIL') || !hasEnv('FIREBASE_PRIVATE_KEY')) {
-    return null;
-  }
-  return {
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-  };
-}
-
-let cachedApp: App | null = null;
-let cachedFirestore: Firestore | null = null;
-
-export function isFirebaseAdminConfigured(): boolean {
-  return !!parseServiceAccountFromEnv() || !!buildServiceAccountFromFields();
-}
-
-export function getFirebaseAdminApp(): App {
-  if (cachedApp) return cachedApp;
-  if (getApps().length > 0) {
-    cachedApp = getApps()[0]!;
-    return cachedApp;
-  }
-
-  const serviceAccount = parseServiceAccountFromEnv() ?? buildServiceAccountFromFields();
-  if (!serviceAccount) {
-    throw new Error(
-      'Firebase Admin is not configured. Set FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_PROJECT_ID/FIREBASE_CLIENT_EMAIL/FIREBASE_PRIVATE_KEY.',
+    console.error(
+      '[FirebaseAdmin] Invalid FIREBASE_SERVICE_ACCOUNT_JSON:',
+      (err as Error).message,
     );
   }
-
-  cachedApp = initializeApp({
-    credential: cert(serviceAccount),
-    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-  });
-  return cachedApp;
 }
 
-export function getFirestoreAdmin(): Firestore {
-  if (cachedFirestore) return cachedFirestore;
-  const db = getFirestore(getFirebaseAdminApp());
-  db.settings({ ignoreUndefinedProperties: true });
-  cachedFirestore = db;
-  return cachedFirestore;
+if (!g.__modeloFirebaseAdminSetupDone) {
+  g.__modeloFirebaseAdminSetupDone = true;
+
+  if (!admin.apps.length) {
+    try {
+      admin.initializeApp({
+        credential: admin.credential.cert({
+          projectId: process.env.FIREBASE_PROJECT_ID,
+          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+          privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+        }),
+        storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+      });
+      console.log('Firebase Admin Initialized Successfully');
+    } catch (error) {
+      console.error('Firebase Admin Initialization Error:', error);
+    }
+  }
+
+  if (!admin.apps.length) {
+    tryInitializeFromServiceAccountJson();
+  }
+}
+
+const db = (() => {
+  if (!admin.apps.length) {
+    return null as unknown as admin.firestore.Firestore;
+  }
+  const firestore = admin.firestore();
+  if (!g.__modeloFirestoreSettingsApplied) {
+    g.__modeloFirestoreSettingsApplied = true;
+    try {
+      firestore.settings({ ignoreUndefinedProperties: true });
+    } catch {
+      /* Settings already applied for this Firestore instance in this process */
+    }
+  }
+  return firestore;
+})();
+
+const auth =
+  admin.apps.length > 0
+    ? admin.auth()
+    : (null as unknown as admin.auth.Auth);
+
+export { db, auth, admin };
+
+export function isFirebaseAdminConfigured(): boolean {
+  return admin.apps.length > 0;
+}
+
+export function getFirebaseAdminApp(): admin.app.App {
+  if (!admin.apps.length) {
+    throw new Error(
+      'Firebase Admin is not configured. Set FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY.',
+    );
+  }
+  return admin.app();
+}
+
+export function getFirestoreAdmin(): admin.firestore.Firestore {
+  if (!admin.apps.length) {
+    throw new Error(
+      'Firebase Admin is not configured. Set FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY.',
+    );
+  }
+  return db;
 }

@@ -1,4 +1,11 @@
-export { getFirebaseAdminApp, getFirestoreAdmin, isFirebaseAdminConfigured } from './admin';
+export {
+  admin,
+  auth,
+  db,
+  getFirebaseAdminApp,
+  getFirestoreAdmin,
+  isFirebaseAdminConfigured,
+} from './admin';
 export {
   getFirebaseClientApp,
   getFirebaseClientAuth,

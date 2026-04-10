@@ -2,8 +2,19 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  /** Keep firebase-admin external so the Functions/SSR bundle does not try to webpack it incorrectly. */
+  /** Do not bundle firebase-admin into the server graph (Firebase Functions / SSR). */
   serverExternalPackages: ['firebase-admin'],
+  /**
+   * Production builds use `next build --webpack` (see package.json) to avoid Turbopack + firebase-admin issues.
+   * These aliases still help `next dev --turbopack` if you opt into Turbopack locally.
+   */
+  turbopack: {
+    resolveAlias: {
+      'firebase-admin/app': 'firebase-admin/app',
+      'firebase-admin/firestore': 'firebase-admin/firestore',
+      'firebase-admin/auth': 'firebase-admin/auth',
+    },
+  },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '**.thingiverse.com' },

@@ -8,8 +8,6 @@
     ],
     "frameworksBackend": {
       "env": {
-        "THINGIVERSE_API_TOKEN": "1ba9cc6c7a605fd959b73132b080151a",
-        "MYMINIFACTORY_API_KEY": "263d18b0-18c7-4342-911d-a923d2c892d4",
         "NEXT_PUBLIC_FIREBASE_API_KEY": "AIzaSyCTyF7PpFihJX4x2zZdCgP_2qaOi2lzdf4",
         "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN": "modelo-studio.firebaseapp.com",
         "NEXT_PUBLIC_FIREBASE_PROJECT_ID": "modelo-studio",
@@ -17,10 +15,7 @@
         "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "23637887991",
         "NEXT_PUBLIC_FIREBASE_APP_ID": "1:23637887991:web:b8488432173d6b1d433cf2",
         "FIREBASE_PROJECT_ID": "modelo-studio",
-        "FIREBASE_CLIENT_EMAIL": "firebase-adminsdk-fbsvc@modelo-studio.iam.gserviceaccount.com",
-        "FIREBASE_PRIVATE_KEY": "-----BEGIN PRIVATE KEY-----\\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDECsdpMYOBaf41\\nEpF6puub1QoJdB35fPtxm2WdDv1ln67qp6m11o8NwoLBO2fKmi8I1VM6OAgbpxuy\\nIpBvh+hUQ1r55MGPmDeVT9ZRJWVdIDZ/dqXUgZ7b18jC0ozaVCbFmigXFfQAb1I7\\nRouZq+0VdVVEr4hHJ5L+OERlkfF+wovTC0feDg1PGI7OPRnXzAsh9NzQZPfHzno/\\nsMfe+ZelenEECUdiEnK/TqzPJwmY2arn1jRlA5lkl5Zmp8HdVidswekGET63IdGh\\nBhflzk4ik3y/1hybBp8DDpIuJ7ts9OWxWFP8H4DqOw72NEUFusI3Mi7IFghVxnve\\nVhV6pCCNAgMBAAECggEACzdIqGKOUQmk4xlwXFGPekdqfxb3Hg6B/kJzQlSYt8c2\\nhTNZeM9ROOrPe0mwSv2eQkWeMN8Cy744Te0/UTo31xZRbqmhT1tYlsDOFK9siLLu\\nm0VJAIr38UD7ufW83ELjQvvqXkPBxYKY9E45b23QLyGa4saeJ+ACP2wtsZfzdpqG\\nDUMiIvg5pi2nUX0yOZB2m5cgIJ+aOT1vZyuo0dbvw5SG3gryHe9r8GDzvurahGGp\\nerqfVZxZy4bfHvvlLxpKkCJfHoJsz9QKEHKINIJ/RBHNtb3eR5zhbpd0fG0LJHBs\\nYDWXEdl/CNZTCrhlZSSCjFqC5mdbQR7dsdYGftGUqwKBgQD3k+hDGXMzLyvXJQj3\\nSNHekfby4N90d2ERTn27ALWzFqTjP0P2WuVSUbg9kkTitjZminXT19fFSLEAC1V3\\nL3LVAomTZUQNWsCnDbjdgTFargw7p7uLyVIKCHgr16oAjILSZPEAiRtSpYdqp8UL\\nEqJ5a8/fYpAKKXRT6JPTbU+LlwKBgQDKtg9/qEemYNWSeZ1MmT1p+Q1lxVh2HRK6\\n3asUaaq1g8mtaOJkHoYh+lh3PCjj20kvyXv0y96u8PGjTgprhSEIK4wgLSOtIKX+\\n4TtdEwJ+DOpE6h1dEUJagKeZlkI5Fe9of1+xtUYBqVmPaTPrxWzDOOTwQpU1Iv45\\nQQ1N+hJJewKBgQCXYRC7NmyB923O9w4sZZItjQJ6L5VyGSx48I1gMmbnQglACgb8\\nM0fUtbL5st374X4R5Md26Js+Pdw8MrHnVlPYety0C084+yyg+Hr4tW4ADDvengjG\\nyCopiFQyOoPwIfo7uwzBTxQtzJioVjzdMF+37nwEErgP/pjqVWNN+6CPsQKBgBTU\\nLDeDxQj1fjx0vpL2U/clnhjM9E/+oMQOrtuEGARarEhjNI/xCvtGy/xEdDclexmr\\n7E60/Aahv1J2XF+76C78uoM74CST7DqKTh08LM9i6Fd4btf3RAgknBQN+nP/KwBj\\nxiNuaukUy50OxET/njNZDz0YulghZlnfs0xF28ctAoGAGWkkCkURL3glo0VEaPS5\\np7GDT0AQEldsH616KUphNBr+2E6sQp0SLh9pgOtYzT6SltK1T4fafbS/rUgKYopW\\np0blLRsvQF1oZKZqQyPc5p5KW//49oQyoXI0c0I+hyekPFX5+SfpFxx+WwKvEAgq\\npjYP6bL3sv4W/Zu0FGSQgH0=\\n-----END PRIVATE KEY-----\\n",
-        "FIREBASE_STORAGE_BUCKET": "modelo-studio.firebasestorage.app",
-        "ADMIN_PASSWORD": "modelo2026!"
+        "FIREBASE_STORAGE_BUCKET": "modelo-studio.firebasestorage.app"
       }
     }
   }
