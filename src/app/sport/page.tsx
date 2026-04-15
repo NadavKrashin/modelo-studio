@@ -1,9 +1,15 @@
-export const dynamic = 'force-dynamic';
+"use client";
 
+import { useEffect, useMemo, useState } from "react";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import Image from "next/image";
 import Link from "next/link";
-import { listActiveSportProductsAdmin } from "@/lib/firebase/sport-products-admin";
-import { buildSportProductThumbnailUrlForBucket } from "@/lib/firebase/sport-products";
+import { getFirebaseClientFirestore } from "@/lib/firebase/client";
+import {
+  buildSportProductThumbnailUrlForBucket,
+  mapSportProductDocument,
+  SPORT_PRODUCTS_COLLECTION,
+} from "@/lib/firebase/sport-products-shared";
 import type { SportProduct } from "@/lib/types/sport-product";
 
 const SLUG_FALLBACK: Record<string, { desc: string; localImage: string }> = {
@@ -42,22 +48,53 @@ function sportWizardHref(slug: string): string {
 
 function resolveCardImageSrc(product: SportProduct): string {
   if (product.imageUrl?.startsWith("http")) return product.imageUrl;
-  const bucket =
-    process.env.FIREBASE_STORAGE_BUCKET ?? process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+  const bucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
   const remote = buildSportProductThumbnailUrlForBucket(bucket, product.slug);
   if (remote) return remote;
   return SLUG_FALLBACK[product.slug]?.localImage ?? "/images/sport-sample.jpeg";
 }
 
-export default async function SportPage() {
-  let products: SportProduct[] = [];
-  try {
-    const raw = await listActiveSportProductsAdmin();
-    products = sortSportProductsForStorefront(raw);
-  } catch (error) {
-    console.error("SPORT DATA FETCH ERROR:", error);
-    products = [];
-  }
+export default function SportPage() {
+  const [products, setProducts] = useState<SportProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const sortedProducts = useMemo(
+    () => sortSportProductsForStorefront(products),
+    [products],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadProducts() {
+      try {
+        setLoading(true);
+        setLoadError(null);
+        const db = getFirebaseClientFirestore();
+        const q = query(collection(db, SPORT_PRODUCTS_COLLECTION), where("isActive", "==", true));
+        const snap = await getDocs(q);
+        if (cancelled) return;
+        setProducts(
+          snap.docs.map((d) =>
+            mapSportProductDocument(d.id, d.data() as Record<string, unknown>),
+          ),
+        );
+      } catch (error) {
+        if (cancelled) return;
+        console.error("SPORT DATA FETCH ERROR:", error);
+        setProducts([]);
+        setLoadError("טעינת מוצרי הספורט נכשלה. נסו שוב בעוד רגע.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void loadProducts();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="bg-white text-slate-900" dir="rtl">
@@ -89,13 +126,32 @@ export default async function SportPage() {
       <section className="max-w-7xl mx-auto py-24 px-6">
         <h2 className="text-4xl font-bold text-center mb-16">בחרו את המשושה הבא שלכם</h2>
 
-        {products.length === 0 ? (
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div
+                key={i}
+                className="rounded-2xl border border-slate-200 bg-white overflow-hidden animate-pulse"
+              >
+                <div className="w-full aspect-[4/3] bg-slate-100" />
+                <div className="p-8 space-y-3">
+                  <div className="h-6 bg-slate-100 rounded" />
+                  <div className="h-4 bg-slate-100 rounded" />
+                  <div className="h-4 bg-slate-100 rounded w-2/3" />
+                  <div className="h-6 bg-slate-100 rounded w-1/3 mt-4" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : loadError ? (
+          <p className="text-center text-red-600 text-lg max-w-xl mx-auto">{loadError}</p>
+        ) : sortedProducts.length === 0 ? (
           <p className="text-center text-slate-500 text-lg max-w-xl mx-auto">
             אין מוצרי ספורט פעילים להצגה כרגע. חזרו בקרוב או פנו אלינו לפרטים.
           </p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-            {products.map((p) => {
+            {sortedProducts.map((p) => {
               const fallback = SLUG_FALLBACK[p.slug];
               const desc = fallback?.desc ?? "";
               const imageSrc = resolveCardImageSrc(p);

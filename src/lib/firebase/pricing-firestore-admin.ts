@@ -2,7 +2,7 @@ import { getFirestoreAdmin } from '@/lib/firebase/admin';
 import { isFirebaseAdminConfigured } from '@/lib/firebase/admin';
 import { FIRESTORE_COLLECTIONS } from '@/lib/firebase/firestore';
 import { mapCityDocument, type CitySizeKey } from '@/lib/firebase/cities';
-import { mapSportProductDocument } from '@/lib/firebase/sport-products';
+import { mapSportProductDocument } from '@/lib/firebase/sport-products-shared';
 
 /**
  * Resolves a city by document id or `slug` field and returns the unit price for the given size.

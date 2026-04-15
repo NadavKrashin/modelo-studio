@@ -1,5 +1,5 @@
 import { isFirebaseAdminConfigured, getFirestoreAdmin } from '@/lib/firebase/admin';
-import { mapSportProductDocument, SPORT_PRODUCTS_COLLECTION } from '@/lib/firebase/sport-products';
+import { mapSportProductDocument, SPORT_PRODUCTS_COLLECTION } from '@/lib/firebase/sport-products-shared';
 import type { SportProduct } from '@/lib/types/sport-product';
 
 /**
