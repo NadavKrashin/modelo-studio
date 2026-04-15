@@ -1,6 +1,3 @@
-import { FirestoreOrderRepository } from '@/lib/repositories/firestore-order-repository';
-import { FirestoreAnalyticsRepository } from '@/lib/repositories/firestore-analytics-repository';
-import { FirestoreFilamentRepository } from '@/lib/repositories/firestore-filament-repository';
 import { StaticCategoryRepository } from '@/lib/repositories/static-category-repository';
 import { InMemoryOrderRepository } from '@/lib/repositories/in-memory-order-repository';
 import { InMemoryAnalyticsRepository } from '@/lib/repositories/in-memory-analytics-repository';
@@ -13,9 +10,8 @@ import { ProviderRegistry, ProviderCache } from '@/lib/providers';
 import { ThingiverseProvider } from '@/lib/providers/thingiverse';
 import { MyMiniFactoryProvider } from '@/lib/providers/myminifactory';
 import { getThingiverseConfig, getMyMiniFactoryConfig, validateProviderConfigs } from '@/lib/config/providers';
-import { CatalogStore, CatalogService, FirestoreCatalogCache } from '@/lib/catalog';
+import { CatalogStore, CatalogService } from '@/lib/catalog';
 import { InMemorySearchAnalytics } from '@/lib/search/search-analytics';
-import { isFirebaseAdminConfigured } from '@/lib/firebase/admin';
 import type {
   OrderRepository,
   FilamentRepository,
@@ -23,6 +19,7 @@ import type {
   AnalyticsRepository,
 } from '@/lib/repositories';
 import type { SearchAnalyticsBackend } from '@/lib/search/search-backend';
+import type { FirestoreCatalogCache } from '@/lib/catalog';
 
 const TAG = '[Container]';
 
@@ -53,7 +50,7 @@ class ServiceContainer {
       const log = w.level === 'error' ? console.error : console.warn;
       log(`${TAG} [${w.provider}] ${w.message}`);
     }
-    const firebaseConfigured = isFirebaseAdminConfigured();
+    const firebaseConfigured = hasFirebaseAdminRuntimeConfig();
     if (!firebaseConfigured) {
       console.warn(
         `${TAG} Firebase Admin not configured; Firestore-backed persistence for orders/analytics/catalog cache is disabled until env vars are set.`,
@@ -61,11 +58,11 @@ class ServiceContainer {
     }
 
     // ── Repositories ───────────────────────────────────────
-    this.orders = firebaseConfigured ? new FirestoreOrderRepository() : new InMemoryOrderRepository();
-    this.filaments = firebaseConfigured ? new FirestoreFilamentRepository() : new InMemoryFilamentRepository();
+    this.orders = firebaseConfigured ? createFirestoreOrderRepository() : new InMemoryOrderRepository();
+    this.filaments = firebaseConfigured ? createFirestoreFilamentRepository() : new InMemoryFilamentRepository();
     this.categories = new StaticCategoryRepository();
     this.analytics = firebaseConfigured
-      ? new FirestoreAnalyticsRepository(this.orders)
+      ? createFirestoreAnalyticsRepository(this.orders)
       : new InMemoryAnalyticsRepository(this.orders);
 
     // ── Provider infrastructure (real providers only) ──────
@@ -94,7 +91,7 @@ class ServiceContainer {
 
     // ── Catalog layer ──────────────────────────────────────
     this.catalogStore = new CatalogStore();
-    this.catalogPersistence = firebaseConfigured ? new FirestoreCatalogCache() : null;
+    this.catalogPersistence = firebaseConfigured ? createFirestoreCatalogCache() : null;
     this.catalogService = new CatalogService(this.catalogStore, this.providerRegistry, this.catalogPersistence ?? undefined);
 
     // ── Search analytics ───────────────────────────────────
@@ -153,3 +150,36 @@ export const getOrderRepo = () => getContainer().orders;
 export const getFilamentRepo = () => getContainer().filaments;
 export const getCategoryRepo = () => getContainer().categories;
 export const getAnalyticsRepo = () => getContainer().analytics;
+
+function hasFirebaseAdminRuntimeConfig(): boolean {
+  const hasProjectId = !!process.env.FIREBASE_PROJECT_ID;
+  const hasClientEmail = !!process.env.FIREBASE_CLIENT_EMAIL;
+  const hasPrivateKey = !!process.env.PRIVATE_KEY_FB;
+  const hasServiceAccountJson = !!process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  return hasProjectId && (hasServiceAccountJson || (hasClientEmail && hasPrivateKey));
+}
+
+function createFirestoreOrderRepository(): OrderRepository {
+  // Lazy require avoids evaluating firebase-admin-backed modules at boot import time.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { FirestoreOrderRepository } = require('../repositories/firestore-order-repository');
+  return new FirestoreOrderRepository();
+}
+
+function createFirestoreFilamentRepository(): FilamentRepository {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { FirestoreFilamentRepository } = require('../repositories/firestore-filament-repository');
+  return new FirestoreFilamentRepository();
+}
+
+function createFirestoreAnalyticsRepository(orders: OrderRepository): AnalyticsRepository {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { FirestoreAnalyticsRepository } = require('../repositories/firestore-analytics-repository');
+  return new FirestoreAnalyticsRepository(orders);
+}
+
+function createFirestoreCatalogCache(): FirestoreCatalogCache {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { FirestoreCatalogCache } = require('../catalog/firestore-catalog-cache');
+  return new FirestoreCatalogCache();
+}

@@ -25,13 +25,20 @@ export function AdminLoginForm() {
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
-        setError(data.error === 'Invalid credentials' ? 'סיסמה שגויה' : 'התחברות נכשלה');
+        if (data.error === 'Invalid credentials') {
+          setError('סיסמה שגויה');
+        } else if (data.error === 'Server misconfiguration') {
+          setError('שגיאת תצורת שרת. בדקו שהסודות ADMIN_PASSWORD ו-ADMIN_JWT_SECRET מוגדרים.');
+        } else {
+          setError('התחברות נכשלה');
+        }
         setLoading(false);
         return;
       }
       const safeFrom = from.startsWith('/admin') && !from.startsWith('/admin/login') ? from : '/admin/dashboard';
-      router.replace(safeFrom);
       router.refresh();
+      router.push(safeFrom);
+      return;
     } catch {
       setError('שגיאת רשת. נסו שוב.');
     } finally {

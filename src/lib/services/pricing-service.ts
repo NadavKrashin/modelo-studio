@@ -8,16 +8,9 @@ import type {
 import type { FilamentRepository } from '@/lib/repositories';
 import type { CreateOrderInput } from '@/lib/validation';
 import { calculatePrice } from '@/lib/pricing/pricing-engine';
-import { fetchGlobalPricingSettings, type GlobalPricingSettings } from '@/lib/firebase/pricing-settings-admin';
-import {
-  findCityByHebrewNameAdmin,
-  getCityUnitPriceAdmin,
-  getSportBasePriceAdmin,
-} from '@/lib/firebase/pricing-firestore-admin';
-import { findActiveCouponForCheckout } from '@/lib/firebase/coupons-admin';
-import { isFirebaseAdminConfigured } from '@/lib/firebase/admin';
 import type { CitySizeKey } from '@/lib/firebase/cities';
 import type { SearchService } from './search-service';
+import type { GlobalPricingSettings } from '@/lib/firebase/pricing-settings-admin';
 
 export type OrderDraftItem = CreateOrderInput['items'][number];
 
@@ -79,13 +72,19 @@ export class PricingService {
     return `₪${amount.toLocaleString('he-IL')}`;
   }
 
+  private async isFirebaseAdminConfigured(): Promise<boolean> {
+    const { isFirebaseAdminConfigured } = await import('@/lib/firebase/admin');
+    return isFirebaseAdminConfigured();
+  }
+
   private async unitPriceForCitiesBundle(
     item: CitiesBundleCartItem,
     settings: GlobalPricingSettings,
   ): Promise<number> {
-    if (!isFirebaseAdminConfigured()) {
+    if (!(await this.isFirebaseAdminConfigured())) {
       throw new OrderPricingError('Cities bundles require Firebase Admin configuration');
     }
+    const { getCityUnitPriceAdmin } = await import('@/lib/firebase/pricing-firestore-admin');
     const n = item.cities.length;
     if (n < 1) throw new OrderPricingError('נדרשת לפחות עיר אחת בחבילה');
 
@@ -132,9 +131,10 @@ export class PricingService {
     item: SimpleCartItem,
     settings: GlobalPricingSettings,
   ): Promise<number> {
-    if (!isFirebaseAdminConfigured()) {
+    if (!(await this.isFirebaseAdminConfigured())) {
       throw new OrderPricingError('מוצרי ספורט דורשים הגדרת Firebase Admin');
     }
+    const { getSportBasePriceAdmin } = await import('@/lib/firebase/pricing-firestore-admin');
     const slug = item.sportProductSlug?.trim();
     if (!slug) {
       throw new OrderPricingError('חסר מזהה מוצר ספורט (sportProductSlug)');
@@ -151,9 +151,12 @@ export class PricingService {
     item: SimpleCartItem,
     settings: GlobalPricingSettings,
   ): Promise<number> {
-    if (!isFirebaseAdminConfigured()) {
+    if (!(await this.isFirebaseAdminConfigured())) {
       throw new OrderPricingError('מוצרי ערים דורשים הגדרת Firebase Admin');
     }
+    const { findCityByHebrewNameAdmin, getCityUnitPriceAdmin } = await import(
+      '@/lib/firebase/pricing-firestore-admin'
+    );
 
     const size: CitySizeKey = item.citySizeKey ?? inferCitySizeFromAttributes(item.attributes);
 
@@ -187,6 +190,8 @@ export class PricingService {
       deliveryMethod: 'shipping' | 'pickup';
     },
   ): Promise<SecureOrderTotals> {
+    const { fetchGlobalPricingSettings } = await import('@/lib/firebase/pricing-settings-admin');
+    const { findActiveCouponForCheckout } = await import('@/lib/firebase/coupons-admin');
     const settings = await fetchGlobalPricingSettings();
 
     const lineItems: CartItem[] = [];

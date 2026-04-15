@@ -8,7 +8,7 @@
     ],
     "frameworksBackend": {
       "memory": "1GiB",
-  "secrets": ["PRIVATE_KEY_FB"],
+  "secrets": ["PRIVATE_KEY_FB", "ADMIN_PASSWORD", "ADMIN_JWT_SECRET"],
   "env": {
         "NEXT_PUBLIC_FIREBASE_API_KEY": "AIzaSyCTyF7PpFihJX4x2zZdCgP_2qaOi2lzdf4",
         "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN": "modelo-studio.firebaseapp.com",
@@ -20,8 +20,7 @@
         "FIREBASE_STORAGE_BUCKET": "modelo-studio.firebasestorage.app",
         "FIREBASE_CLIENT_EMAIL": "firebase-adminsdk-fbsvc@modelo-studio.iam.gserviceaccount.com",
         "THINGIVERSE_API_TOKEN": "1ba9cc6c7a605fd959b73132b080151a",
-        "MYMINIFACTORY_API_KEY": "263d18b0-18c7-4342-911d-a923d2c892d4",
-        "ADMIN_PASSWORD": "modelo2026!"
+        "MYMINIFACTORY_API_KEY": "263d18b0-18c7-4342-911d-a923d2c892d4"
       }
     }
   }
