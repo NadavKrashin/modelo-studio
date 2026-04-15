@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
+import { requireAdminAuth } from '@/lib/api/admin-auth';
 import { stripOrderLookupToken } from '@/lib/admin-session';
 import { getOrderService } from '@/lib/services/container';
 import { parseSearchParams } from '@/lib/validation/api-helpers';
 import { adminOrdersQuerySchema } from '@/lib/validation';
 
 export async function GET(request: Request) {
+  const unauthorized = await requireAdminAuth();
+  if (unauthorized) return unauthorized;
+
   const result = parseSearchParams(request.url, adminOrdersQuerySchema);
   if (result.error) return result.error;
 

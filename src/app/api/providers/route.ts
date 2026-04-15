@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { requireAdminAuth } from '@/lib/api/admin-auth';
 import { getSearchService, getProviderRegistry, getProviderCache, getCatalogStore } from '@/lib/services/container';
 import { ThingiverseProvider } from '@/lib/providers/thingiverse';
 import { MyMiniFactoryProvider } from '@/lib/providers/myminifactory';
@@ -9,6 +10,9 @@ import { MyMiniFactoryProvider } from '@/lib/providers/myminifactory';
  * exclusion info (dev mode only).
  */
 export async function GET() {
+  const unauthorized = await requireAdminAuth();
+  if (unauthorized) return unauthorized;
+
   try {
     const searchService = getSearchService();
     const statuses = await searchService.getProviderStatus();

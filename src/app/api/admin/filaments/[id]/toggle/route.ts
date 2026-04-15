@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
+import { requireAdminAuth } from '@/lib/api/admin-auth';
 import { getFilamentService } from '@/lib/services/container';
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const unauthorized = await requireAdminAuth();
+  if (unauthorized) return unauthorized;
+
   const { id } = await params;
 
   try {

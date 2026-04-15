@@ -1,11 +1,10 @@
+export const dynamic = 'force-dynamic';
+
 import Image from "next/image";
 import Link from "next/link";
 import { listActiveSportProductsAdmin } from "@/lib/firebase/sport-products-admin";
 import { buildSportProductThumbnailUrlForBucket } from "@/lib/firebase/sport-products";
 import type { SportProduct } from "@/lib/types/sport-product";
-
-/** Firestore is source of truth for active products and prices — avoid stale static HTML. */
-export const dynamic = "force-dynamic";
 
 const SLUG_FALLBACK: Record<string, { desc: string; localImage: string }> = {
   route: {
@@ -56,7 +55,7 @@ export default async function SportPage() {
     const raw = await listActiveSportProductsAdmin();
     products = sortSportProductsForStorefront(raw);
   } catch (error) {
-    console.error("DEBUG SPORT ERROR:", error);
+    console.error("SPORT DATA FETCH ERROR:", error);
     products = [];
   }
 

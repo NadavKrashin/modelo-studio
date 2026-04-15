@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { requireAdminAuth } from '@/lib/api/admin-auth';
 import { getSearchService } from '@/lib/services/container';
 
 interface ClickBody {
@@ -9,6 +10,9 @@ interface ClickBody {
 }
 
 export async function POST(request: Request) {
+  const unauthorized = await requireAdminAuth();
+  if (unauthorized) return unauthorized;
+
   try {
     const body = (await request.json()) as ClickBody;
 

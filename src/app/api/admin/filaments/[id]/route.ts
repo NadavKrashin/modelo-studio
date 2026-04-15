@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { requireAdminAuth } from '@/lib/api/admin-auth';
 import { getFilamentService } from '@/lib/services/container';
 import { parseBody } from '@/lib/validation/api-helpers';
 import { updateFilamentSchema } from '@/lib/validation';
@@ -7,6 +8,9 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const unauthorized = await requireAdminAuth();
+  if (unauthorized) return unauthorized;
+
   const { id } = await params;
   try {
     const service = getFilamentService();
@@ -25,6 +29,9 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const unauthorized = await requireAdminAuth();
+  if (unauthorized) return unauthorized;
+
   const { id } = await params;
   const result = await parseBody(request, updateFilamentSchema);
   if (result.error) return result.error;

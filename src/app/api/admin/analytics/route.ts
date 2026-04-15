@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
+import { requireAdminAuth } from '@/lib/api/admin-auth';
 import { getAnalyticsRepo } from '@/lib/services/container';
 
 export async function GET() {
+  const unauthorized = await requireAdminAuth();
+  if (unauthorized) return unauthorized;
+
   try {
     const analytics = getAnalyticsRepo();
     const stats = await analytics.getStats();

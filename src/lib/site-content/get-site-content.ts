@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { getFirestoreAdmin, isFirebaseAdminConfigured } from '@/lib/firebase';
+import { getFirestoreAdmin, isFirebaseAdminConfigured } from '@/lib/firebase/admin';
 import { FIRESTORE_COLLECTIONS } from '@/lib/firebase/firestore';
 
 const DEFAULT_FILES: Record<'terms' | 'accessibility', string> = {
