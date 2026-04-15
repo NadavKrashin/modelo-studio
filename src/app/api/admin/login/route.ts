@@ -24,6 +24,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
+  console.log(
+    'Login Attempt - Provided pass length:',
+    body.password?.length,
+    'Server pass exists:',
+    !!process.env.ADMIN_PASSWORD,
+  );
+
   const password = typeof body.password === 'string' ? body.password : '';
   if (!verifyAdminPassword(password)) {
     return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });

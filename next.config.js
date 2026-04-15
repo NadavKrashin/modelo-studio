@@ -1,8 +1,7 @@
-import type { NextConfig } from 'next';
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   reactStrictMode: true,
-  /** Do not bundle firebase-admin into the server graph (Firebase Functions / SSR). */
+  // Do not bundle firebase-admin into the server graph (Firebase Functions / SSR).
   serverExternalPackages: ['firebase-admin'],
   webpack: (config, { isServer }) => {
     if (isServer) {
@@ -15,10 +14,8 @@ const nextConfig: NextConfig = {
     }
     return config;
   },
-  /**
-   * Production builds use `next build --webpack` (see package.json) to avoid Turbopack + firebase-admin issues.
-   * These aliases still help `next dev --turbopack` if you opt into Turbopack locally.
-   */
+  // Production builds use `next build --webpack` to avoid Turbopack + firebase-admin issues.
+  // These aliases still help `next dev --turbopack` if you opt into Turbopack locally.
   turbopack: {
     resolveAlias: {
       'firebase-admin/app': 'firebase-admin/app',
@@ -40,4 +37,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+module.exports = nextConfig;
