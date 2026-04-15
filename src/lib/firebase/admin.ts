@@ -51,13 +51,29 @@ function tryInitializeFromServiceAccountJson(): void {
 if (!g.__modeloFirebaseAdminSetupDone) {
   g.__modeloFirebaseAdminSetupDone = true;
 
+  const hasProjectId = !!process.env.FIREBASE_PROJECT_ID;
+  const hasClientEmail = !!process.env.FIREBASE_CLIENT_EMAIL;
+  const hasPrivateKey = !!process.env.PRIVATE_KEY_FB;
+  const hasServiceAccountJson = !!process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  const hasAdminPassword = !!process.env.ADMIN_PASSWORD;
+
+  console.log(
+    `[FirebaseAdmin] Env check — PROJECT_ID=${hasProjectId}, CLIENT_EMAIL=${hasClientEmail}, PRIVATE_KEY=${hasPrivateKey}, SERVICE_ACCOUNT_JSON=${hasServiceAccountJson}, ADMIN_PASSWORD=${hasAdminPassword}`,
+  );
+
+  if (!hasProjectId) console.error('CRITICAL FATAL: FIREBASE_PROJECT_ID is missing at runtime!');
+  if (!hasClientEmail) console.error('CRITICAL FATAL: FIREBASE_CLIENT_EMAIL is missing at runtime!');
+  if (!hasPrivateKey && !hasServiceAccountJson) {
+    console.error('CRITICAL FATAL: PRIVATE_KEY_FB and FIREBASE_SERVICE_ACCOUNT_JSON are BOTH missing at runtime! Firebase Admin cannot initialize.');
+  }
+
   if (!admin.apps.length) {
     try {
       admin.initializeApp({
         credential: admin.credential.cert({
           projectId: process.env.FIREBASE_PROJECT_ID,
           clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-          privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+          privateKey: process.env.PRIVATE_KEY_FB?.replace(/\\n/g, '\n'),
         }),
         storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
       });
@@ -69,6 +85,10 @@ if (!g.__modeloFirebaseAdminSetupDone) {
 
   if (!admin.apps.length) {
     tryInitializeFromServiceAccountJson();
+  }
+
+  if (!admin.apps.length) {
+    console.error('CRITICAL FATAL: Firebase Admin failed ALL initialization paths. admin.apps.length === 0. All Firestore reads will return empty or throw.');
   }
 }
 
@@ -102,7 +122,7 @@ export function isFirebaseAdminConfigured(): boolean {
 export function getFirebaseAdminApp(): admin.app.App {
   if (!admin.apps.length) {
     throw new Error(
-      'Firebase Admin is not configured. Set FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY.',
+      'Firebase Admin is not configured. Set FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and PRIVATE_KEY_FB.',
     );
   }
   return admin.app();
@@ -111,7 +131,7 @@ export function getFirebaseAdminApp(): admin.app.App {
 export function getFirestoreAdmin(): admin.firestore.Firestore {
   if (!admin.apps.length) {
     throw new Error(
-      'Firebase Admin is not configured. Set FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY.',
+      'Firebase Admin is not configured. Set FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and PRIVATE_KEY_FB.',
     );
   }
   return db;

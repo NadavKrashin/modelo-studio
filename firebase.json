@@ -7,7 +7,9 @@
       "**/node_modules/**"
     ],
     "frameworksBackend": {
-      "env": {
+      "memory": "1GiB",
+  "secrets": ["PRIVATE_KEY_FB"],
+  "env": {
         "NEXT_PUBLIC_FIREBASE_API_KEY": "AIzaSyCTyF7PpFihJX4x2zZdCgP_2qaOi2lzdf4",
         "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN": "modelo-studio.firebaseapp.com",
         "NEXT_PUBLIC_FIREBASE_PROJECT_ID": "modelo-studio",
@@ -15,7 +17,11 @@
         "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "23637887991",
         "NEXT_PUBLIC_FIREBASE_APP_ID": "1:23637887991:web:b8488432173d6b1d433cf2",
         "FIREBASE_PROJECT_ID": "modelo-studio",
-        "FIREBASE_STORAGE_BUCKET": "modelo-studio.firebasestorage.app"
+        "FIREBASE_STORAGE_BUCKET": "modelo-studio.firebasestorage.app",
+        "FIREBASE_CLIENT_EMAIL": "firebase-adminsdk-fbsvc@modelo-studio.iam.gserviceaccount.com",
+        "THINGIVERSE_API_TOKEN": "1ba9cc6c7a605fd959b73132b080151a",
+        "MYMINIFACTORY_API_KEY": "263d18b0-18c7-4342-911d-a923d2c892d4",
+        "ADMIN_PASSWORD": "modelo2026!"
       }
     }
   }
