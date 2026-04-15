@@ -6,7 +6,8 @@ import { ADMIN_JWT_COOKIE, getJwtSecretBytes } from '@/lib/admin-session';
 function adminSecretOrNull(): Uint8Array | null {
   try {
     return getJwtSecretBytes();
-  } catch {
+  } catch (error) {
+    console.log('Middleware JWT verify failed:', error);
     return null;
   }
 }
@@ -19,7 +20,8 @@ async function isValidAdmin(request: NextRequest): Promise<boolean> {
   try {
     await jwtVerify(token, secret);
     return true;
-  } catch {
+  } catch (error) {
+    console.log('Middleware JWT verify failed:', error);
     return false;
   }
 }
@@ -82,5 +84,6 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
+  runtime: 'nodejs',
   matcher: ['/admin/:path*', '/api/admin/:path*', '/api/orders', '/api/orders/:id', '/api/orders/:id/status'],
 };
