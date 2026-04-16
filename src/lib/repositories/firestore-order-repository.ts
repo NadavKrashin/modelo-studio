@@ -22,7 +22,7 @@ export class FirestoreOrderRepository implements OrderRepository {
 
   async findById(id: string): Promise<Order | null> {
     const snap = await this.getDb().collection(FIRESTORE_COLLECTIONS.orders).doc(id).get();
-    return snap.exists ? ({ id: snap.id, ...(snap.data() as Order) } as Order) : null;
+    return snap.exists ? ({ ...(snap.data() as Order), id: snap.id } as Order) : null;
   }
 
   async findByOrderNumber(orderNumber: string): Promise<Order | null> {
@@ -35,14 +35,14 @@ export class FirestoreOrderRepository implements OrderRepository {
     if (snap.empty) return null;
     const doc = snap.docs[0]!;
     // Ensure doc id is present in the returned object.
-    return { id: doc.id, ...(doc.data() as Order) } as Order;
+    return { ...(doc.data() as Order), id: doc.id } as Order;
   }
 
   async findByEmail(email: string): Promise<Order[]> {
     const normalized = email.trim().toLowerCase();
     const snap = await this.getDb().collection(FIRESTORE_COLLECTIONS.orders).get();
     return snap.docs
-      .map((d) => ({ id: d.id, ...(d.data() as Order) }) as Order)
+      .map((d) => ({ ...(d.data() as Order), id: d.id }) as Order)
       .filter((order) => order.customer.email.trim().toLowerCase() === normalized);
   }
 
@@ -80,7 +80,7 @@ export class FirestoreOrderRepository implements OrderRepository {
 
     const snap = await this.getDb().collection(FIRESTORE_COLLECTIONS.orders).limit(DEFAULT_LIST_LIMIT).get();
     console.log("Firestore fetch count:", snap.size);
-    let orders = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Order) }) as Order);
+    let orders = snap.docs.map((d) => ({ ...(d.data() as Order), id: d.id }) as Order);
 
     if (options?.status) {
       orders = orders.filter((order) => order.status === options.status);
@@ -114,7 +114,7 @@ export class FirestoreOrderRepository implements OrderRepository {
   async countByStatus(): Promise<Record<OrderStatus, number>> {
     const snap = await this.getDb().collection(FIRESTORE_COLLECTIONS.orders).limit(DEFAULT_LIST_LIMIT).get();
     console.log("Firestore fetch count:", snap.size);
-    const orders = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Order) }) as Order);
+    const orders = snap.docs.map((d) => ({ ...(d.data() as Order), id: d.id }) as Order);
     const counts: Record<OrderStatus, number> = {
       received: 0,
       pending_approval: 0,
