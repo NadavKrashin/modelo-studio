@@ -58,6 +58,13 @@ export function DashboardClient() {
     );
   }
 
+  // Defensive defaults in case the API returns partial objects.
+  const ordersAwaitingApproval = stats.ordersAwaitingApproval ?? [];
+  const totalOrders = stats.totalOrders ?? 0;
+  const totalRevenue = stats.totalRevenue ?? 0;
+  const pendingApprovals = stats.pendingApprovals ?? 0;
+  const activeOrders = stats.activeOrders ?? 0;
+
   return (
     <div className="animate-fade-in space-y-6">
       <div className="flex items-center justify-between">
@@ -78,8 +85,8 @@ export function DashboardClient() {
               </svg>
             </div>
           </div>
-          <p className="text-3xl font-extrabold text-foreground">{stats.totalOrders}</p>
-          <p className="text-[11px] text-muted mt-1">{stats.activeOrders} הזמנות פעילות</p>
+          <p className="text-3xl font-extrabold text-foreground">{totalOrders}</p>
+          <p className="text-[11px] text-muted mt-1">{activeOrders} הזמנות פעילות</p>
         </div>
 
         <div className="bg-white rounded-2xl border border-border p-4 sm:p-5 hover:shadow-md transition-shadow">
@@ -91,22 +98,24 @@ export function DashboardClient() {
               </svg>
             </div>
           </div>
-          <p className="text-3xl font-extrabold text-primary">{formatPrice(stats.totalRevenue)}</p>
-          <p className="text-[11px] text-muted mt-1">ממוצע {formatPrice(stats.totalOrders > 0 ? Math.round(stats.totalRevenue / stats.totalOrders) : 0)} לכל הזמנה</p>
+          <p className="text-3xl font-extrabold text-primary">{formatPrice(totalRevenue)}</p>
+          <p className="text-[11px] text-muted mt-1">
+            ממוצע {formatPrice(totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0)} לכל הזמנה
+          </p>
         </div>
 
         <div className="bg-white rounded-2xl border border-border p-4 sm:p-5 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-medium text-muted">ממתינות לאישור</span>
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${stats.pendingApprovals > 0 ? 'bg-amber-50' : 'bg-gray-50'}`}>
-              <svg className={`w-5 h-5 ${stats.pendingApprovals > 0 ? 'text-warning' : 'text-muted'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${pendingApprovals > 0 ? 'bg-amber-50' : 'bg-gray-50'}`}>
+              <svg className={`w-5 h-5 ${pendingApprovals > 0 ? 'text-warning' : 'text-muted'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
               </svg>
             </div>
           </div>
-          <p className={`text-3xl font-extrabold ${stats.pendingApprovals > 0 ? 'text-warning' : 'text-foreground'}`}>{stats.pendingApprovals}</p>
+          <p className={`text-3xl font-extrabold ${pendingApprovals > 0 ? 'text-warning' : 'text-foreground'}`}>{pendingApprovals}</p>
           <p className="text-[11px] text-muted mt-1">
-            {stats.pendingApprovals > 0 ? 'מחכות לאישור' : 'הכל מטופל'}
+            {pendingApprovals > 0 ? 'מחכות לאישור' : 'הכל מטופל'}
           </p>
         </div>
 
@@ -119,16 +128,16 @@ export function DashboardClient() {
               </svg>
             </div>
           </div>
-          <p className="text-3xl font-extrabold text-foreground">{stats.activeOrders}</p>
+          <p className="text-3xl font-extrabold text-foreground">{activeOrders}</p>
           <p className="text-[11px] text-muted mt-1">בתהליך ייצור ומשלוח</p>
         </div>
       </div>
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        {[
-          { href: '/admin/orders?status=pending_approval', label: 'אשר הזמנות', count: stats.pendingApprovals, color: 'amber' },
-          { href: '/admin/orders', label: 'כל ההזמנות', count: stats.totalOrders, color: 'blue' },
+          {[
+          { href: '/admin/orders?status=pending_approval', label: 'אשר הזמנות', count: pendingApprovals, color: 'amber' },
+          { href: '/admin/orders', label: 'כל ההזמנות', count: totalOrders, color: 'blue' },
           { href: '/admin/filaments', label: 'נהל פילמנטים', count: null, color: 'purple' },
           { href: '/admin/analytics', label: 'צפה בנתונים', count: null, color: 'green' },
         ].map((action) => (
@@ -158,7 +167,7 @@ export function DashboardClient() {
               הצג הכל
             </Link>
           </div>
-          {stats.ordersAwaitingApproval.length === 0 ? (
+          {ordersAwaitingApproval.length === 0 ? (
             <div className="px-5 py-10 text-center">
               <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-3">
                 <svg className="w-6 h-6 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -169,7 +178,7 @@ export function DashboardClient() {
             </div>
           ) : (
             <div className="divide-y divide-border">
-              {stats.ordersAwaitingApproval.slice(0, 5).map((order) => (
+              {ordersAwaitingApproval.slice(0, 5).map((order) => (
                 <Link
                   key={order.id}
                   href={`/admin/orders?selected=${order.id}`}

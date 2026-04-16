@@ -53,8 +53,14 @@ export function AnalyticsClient() {
     );
   }
 
-  const avgOrderValue = stats.totalOrders > 0 ? Math.round(stats.totalRevenue / stats.totalOrders) : 0;
-  const maxDayRevenue = Math.max(...stats.revenueByDay.map((d) => d.revenue), 1);
+  // Defensive defaults in case the API returns partial objects.
+  const revenueByDay = stats.revenueByDay ?? [];
+  const totalOrders = stats.totalOrders ?? 0;
+  const totalRevenue = stats.totalRevenue ?? 0;
+  const activeOrders = stats.activeOrders ?? 0;
+
+  const avgOrderValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
+  const maxDayRevenue = Math.max(...revenueByDay.map((d) => d.revenue), 1);
 
   const statusBreakdown: { status: OrderStatus; count: number; color: string }[] = [
     { status: 'received', count: allOrders.items.filter((o) => o.status === 'received').length, color: 'bg-gray-400' },
@@ -78,11 +84,11 @@ export function AnalyticsClient() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-white rounded-2xl border border-border p-4 sm:p-5">
           <p className="text-xs font-medium text-muted mb-1">סה&quot;כ הכנסות</p>
-          <p className="text-2xl sm:text-3xl font-extrabold text-primary">{formatPrice(stats.totalRevenue)}</p>
+          <p className="text-2xl sm:text-3xl font-extrabold text-primary">{formatPrice(totalRevenue)}</p>
         </div>
         <div className="bg-white rounded-2xl border border-border p-4 sm:p-5">
           <p className="text-xs font-medium text-muted mb-1">סה&quot;כ הזמנות</p>
-          <p className="text-2xl sm:text-3xl font-extrabold text-foreground">{stats.totalOrders}</p>
+          <p className="text-2xl sm:text-3xl font-extrabold text-foreground">{totalOrders}</p>
         </div>
         <div className="bg-white rounded-2xl border border-border p-4 sm:p-5">
           <p className="text-xs font-medium text-muted mb-1">ממוצע להזמנה</p>
@@ -90,7 +96,7 @@ export function AnalyticsClient() {
         </div>
         <div className="bg-white rounded-2xl border border-border p-4 sm:p-5">
           <p className="text-xs font-medium text-muted mb-1">הזמנות פעילות</p>
-          <p className="text-2xl sm:text-3xl font-extrabold text-foreground">{stats.activeOrders}</p>
+          <p className="text-2xl sm:text-3xl font-extrabold text-foreground">{activeOrders}</p>
         </div>
       </div>
 
@@ -99,11 +105,11 @@ export function AnalyticsClient() {
         <div className="flex items-center justify-between mb-5">
           <h2 className="font-bold text-foreground text-sm">הכנסות — 7 ימים אחרונים</h2>
           <span className="text-xs text-muted">
-            סה&quot;כ: {formatPrice(stats.revenueByDay.reduce((s, d) => s + d.revenue, 0))}
+            סה&quot;כ: {formatPrice(revenueByDay.reduce((s, d) => s + d.revenue, 0))}
           </span>
         </div>
         <div className="flex items-end gap-2.5 h-44">
-          {stats.revenueByDay.map((day) => {
+          {revenueByDay.map((day) => {
             const pct = day.revenue > 0 ? Math.max(8, (day.revenue / maxDayRevenue) * 100) : 4;
             const isToday = day.date === new Date().toISOString().slice(0, 10);
             return (

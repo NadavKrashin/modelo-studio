@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
 import { ADMIN_JWT_COOKIE, getJwtSecretBytes } from '@/lib/admin-session';
+import { CLIENT_JWT_COOKIE } from '@/lib/client-session';
 
 function adminSecretOrNull(): Uint8Array | null {
   try {
@@ -80,10 +81,23 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // ── Client (guest order tracking) API routes ──
+  if (pathname === '/api/client/login' || pathname === '/api/client/logout') {
+    return NextResponse.next();
+  }
+
+  if (pathname.startsWith('/api/client')) {
+    const clientToken = request.cookies.get(CLIENT_JWT_COOKIE)?.value;
+    if (!clientToken) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    return NextResponse.next();
+  }
+
   return NextResponse.next();
 }
 
 export const config = {
   runtime: 'nodejs',
-  matcher: ['/admin/:path*', '/api/admin/:path*', '/api/orders', '/api/orders/:id', '/api/orders/:id/status'],
+  matcher: ['/admin/:path*', '/api/admin/:path*', '/api/orders', '/api/orders/:id', '/api/orders/:id/status', '/api/client/:path*'],
 };

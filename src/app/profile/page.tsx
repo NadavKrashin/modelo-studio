@@ -1,289 +1,360 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Package,
-  UserCircle,
   LogOut,
   Loader2,
   CheckCircle2,
   Clock,
   Printer,
   Truck,
+  Search,
 } from "lucide-react";
+import type { Order, OrderStatus } from "@/lib/types/order";
+import { ORDER_STATUS_LABELS, DELIVERY_METHOD_LABELS } from "@/lib/types/order";
 
-type LoginStep = "phone" | "otp";
-type ActiveTab = "orders" | "details";
+const STATUS_FLOW: OrderStatus[] = [
+  "received",
+  "pending_approval",
+  "in_production",
+  "printed",
+  "shipped",
+  "completed",
+];
 
-const ORDER_STEPS = [
-  { label: "התקבל", status: "done" },
-  { label: "הכנת קבצים", status: "done" },
-  { label: "בהדפסה (3D)", status: "current" },
-  { label: "נשלח", status: "pending" },
-] as const;
+const STATUS_STEP_CONFIG: {
+  status: OrderStatus;
+  label: string;
+  icon: typeof CheckCircle2;
+}[] = [
+  { status: "received", label: "התקבלה", icon: CheckCircle2 },
+  { status: "in_production", label: "בייצור", icon: Clock },
+  { status: "printed", label: "הודפסה", icon: Printer },
+  { status: "shipped", label: "נשלחה", icon: Truck },
+  { status: "completed", label: "הושלמה", icon: CheckCircle2 },
+];
 
-const stepIcons = [CheckCircle2, CheckCircle2, Printer, Truck] as const;
+function formatPrice(n: number) {
+  return `₪${n.toLocaleString("he-IL")}`;
+}
+
+function getStepState(
+  orderStatus: OrderStatus,
+  stepStatus: OrderStatus,
+): "done" | "current" | "pending" {
+  const orderIdx = STATUS_FLOW.indexOf(orderStatus);
+  const stepIdx = STATUS_FLOW.indexOf(stepStatus);
+  if (stepIdx < orderIdx) return "done";
+  if (stepIdx === orderIdx) return "current";
+  return "pending";
+}
 
 export default function ProfilePage() {
+  const router = useRouter();
+  const [order, setOrder] = useState<Order | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [loginStep, setLoginStep] = useState<LoginStep>("phone");
+
+  const [orderId, setOrderId] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [otpCode, setOtpCode] = useState("");
-  const [otpError, setOtpError] = useState("");
+  const [loginError, setLoginError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<ActiveTab>("orders");
 
-  const [firstName, setFirstName] = useState("רונית");
-  const [lastName, setLastName] = useState("שקד");
-  const [email, setEmail] = useState("ronit@example.com");
-  const [detailsPhone, setDetailsPhone] = useState("050-1234567");
-  const [address, setAddress] = useState("יונה וולך 18, הוד השרון");
-  const [detailsSaved, setDetailsSaved] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
 
-  const handlePhoneSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!phoneNumber.trim()) return;
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setLoginStep("otp");
-    }, 1000);
-  };
-
-  const handleOtpSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setOtpError("");
-    if (otpCode === "000") {
-      setIsLoggedIn(true);
-    } else {
-      setOtpError("קוד שגוי");
+    async function checkSession() {
+      try {
+        const res = await fetch("/api/client/order");
+        if (res.ok) {
+          const data: Order = await res.json();
+          if (!cancelled) {
+            setOrder(data);
+            setIsLoggedIn(true);
+          }
+        }
+      } catch {
+        // Not authenticated — show login
+      } finally {
+        if (!cancelled) setAuthChecked(true);
+      }
     }
-  };
 
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setLoginStep("phone");
-    setPhoneNumber("");
-    setOtpCode("");
-    setOtpError("");
-  };
+    checkSession();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  const handleDetailsSave = (e: React.FormEvent) => {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    setDetailsSaved(true);
-    setTimeout(() => setDetailsSaved(false), 2000);
-  };
+    setLoginError(null);
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/client/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: orderId.trim(), phoneNumber: phoneNumber.trim() }),
+      });
+
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        setLoginError(data.error || "שגיאה בהתחברות");
+        setLoading(false);
+        return;
+      }
+
+      const data = await res.json();
+      setOrder(data.order);
+      setIsLoggedIn(true);
+      router.refresh();
+    } catch {
+      setLoginError("שגיאת רשת. נסו שוב.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleLogout() {
+    await fetch("/api/client/logout", { method: "POST" });
+    setOrder(null);
+    setIsLoggedIn(false);
+    setOrderId("");
+    setPhoneNumber("");
+    router.refresh();
+  }
+
+  async function refreshOrder() {
+    try {
+      const res = await fetch("/api/client/order");
+      if (res.ok) {
+        const data: Order = await res.json();
+        setOrder(data);
+      }
+    } catch {
+      // Silently fail on refresh
+    }
+  }
 
   const inputCls =
     "w-full rounded-xl border border-gray-300 px-4 py-3 outline-none transition-all focus:ring-2 focus:ring-black text-sm";
 
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+      </div>
+    );
+  }
+
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-4" dir="rtl">
+      <div
+        className="min-h-screen bg-white flex items-center justify-center px-4"
+        dir="rtl"
+      >
         <div className="w-full max-w-sm">
-          {loginStep === "phone" && (
-            <form onSubmit={handlePhoneSubmit} className="space-y-6">
-              <div className="text-center space-y-2">
-                <div className="mx-auto w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
-                  <UserCircle className="w-7 h-7 text-gray-500" strokeWidth={1.5} />
-                </div>
-                <h1 className="text-2xl font-extrabold text-slate-900">
-                  התחברות לאזור האישי
-                </h1>
-                <p className="text-sm text-gray-500">הזינו את מספר הטלפון שלכם</p>
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div className="text-center space-y-2">
+              <div className="mx-auto w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
+                <Search
+                  className="w-7 h-7 text-gray-500"
+                  strokeWidth={1.5}
+                />
+              </div>
+              <h1 className="text-2xl font-extrabold text-slate-900">
+                מעקב הזמנה
+              </h1>
+              <p className="text-sm text-gray-500">
+                הזינו את מספר ההזמנה ומספר הטלפון שהשתמשתם בו בעת ביצוע ההזמנה
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label
+                  htmlFor="order-id"
+                  className="block text-sm font-medium text-gray-700 mb-1.5"
+                >
+                  מספר הזמנה
+                </label>
+                <input
+                  id="order-id"
+                  type="text"
+                  value={orderId}
+                  onChange={(e) => setOrderId(e.target.value)}
+                  placeholder="MDL-A7K9B2F"
+                  className={`${inputCls} text-left font-mono`}
+                  dir="ltr"
+                  autoFocus
+                  autoComplete="off"
+                />
               </div>
 
-              <input
-                type="tel"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                placeholder="050-0000000"
-                className={`${inputCls} text-left`}
-                dir="ltr"
-                autoFocus
-              />
-
-              <button
-                type="submit"
-                disabled={!phoneNumber.trim() || loading}
-                className="w-full rounded-xl bg-black px-6 py-3.5 text-white font-bold text-sm hover:bg-slate-800 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                {loading ? "שולח קוד..." : "המשך"}
-              </button>
-            </form>
-          )}
-
-          {loginStep === "otp" && (
-            <form onSubmit={handleOtpSubmit} className="space-y-6">
-              <div className="text-center space-y-2">
-                <div className="mx-auto w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
-                  <UserCircle className="w-7 h-7 text-gray-500" strokeWidth={1.5} />
-                </div>
-                <h1 className="text-2xl font-extrabold text-slate-900">הזן את הקוד</h1>
-                <p className="text-sm text-gray-500">
-                  שלחנו קוד אימות ל-
-                  <span className="font-semibold text-slate-700" dir="ltr">
-                    {phoneNumber}
-                  </span>
-                </p>
+              <div>
+                <label
+                  htmlFor="phone-number"
+                  className="block text-sm font-medium text-gray-700 mb-1.5"
+                >
+                  מספר טלפון
+                </label>
+                <input
+                  id="phone-number"
+                  type="tel"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  placeholder="050-0000000"
+                  className={`${inputCls} text-left`}
+                  dir="ltr"
+                  autoComplete="tel"
+                />
               </div>
+            </div>
 
-              <input
-                type="text"
-                inputMode="numeric"
-                maxLength={3}
-                value={otpCode}
-                onChange={(e) => {
-                  setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 3));
-                  setOtpError("");
-                }}
-                placeholder="000"
-                className={`${inputCls} text-center tracking-[0.5em] text-xl font-bold`}
-                dir="ltr"
-                autoFocus
-              />
+            {loginError && (
+              <p className="text-sm text-red-600 text-center font-medium">
+                {loginError}
+              </p>
+            )}
 
-              {otpError && (
-                <p className="text-sm text-red-600 text-center font-medium">{otpError}</p>
-              )}
+            <button
+              type="submit"
+              disabled={!orderId.trim() || !phoneNumber.trim() || loading}
+              className="w-full rounded-xl bg-black px-6 py-3.5 text-white font-bold text-sm hover:bg-slate-800 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+              {loading ? "מחפש..." : "צפה בהזמנה"}
+            </button>
 
-              <button
-                type="submit"
-                disabled={otpCode.length < 3}
-                className="w-full rounded-xl bg-black px-6 py-3.5 text-white font-bold text-sm hover:bg-slate-800 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                התחבר
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setLoginStep("phone");
-                  setOtpCode("");
-                  setOtpError("");
-                }}
-                className="w-full text-sm text-gray-500 hover:text-black transition-colors"
-              >
-                שינוי מספר טלפון
-              </button>
-            </form>
-          )}
+            <Link
+              href="/"
+              className="block text-center text-sm text-gray-500 hover:text-black transition-colors"
+            >
+              חזרה לעמוד הראשי
+            </Link>
+          </form>
         </div>
       </div>
     );
   }
 
-  const sidebarItems: { key: ActiveTab | "logout"; label: string; icon: typeof Package }[] = [
-    { key: "orders", label: "ההזמנות שלי", icon: Package },
-    { key: "details", label: "פרטים אישיים", icon: UserCircle },
-  ];
-
   return (
     <div className="min-h-screen bg-white" dir="rtl">
-      <div className="max-w-7xl mx-auto px-4 py-10">
-        <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 mb-8">
-          האזור האישי
-        </h1>
-
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-          {/* Sidebar */}
-          <aside className="md:col-span-3">
-            <div className="rounded-2xl border border-gray-200 overflow-hidden">
-              {sidebarItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeTab === item.key;
-                return (
-                  <button
-                    key={item.key}
-                    onClick={() => setActiveTab(item.key as ActiveTab)}
-                    className={`w-full flex items-center gap-3 px-5 py-4 text-sm font-medium transition-all border-b border-gray-100 last:border-b-0 ${
-                      isActive
-                        ? "bg-black text-white"
-                        : "bg-white text-slate-700 hover:bg-gray-50"
-                    }`}
-                  >
-                    <Icon className="w-5 h-5" strokeWidth={1.8} />
-                    {item.label}
-                  </button>
-                );
-              })}
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-5 py-4 text-sm font-medium text-red-600 hover:bg-red-50 transition-all"
-              >
-                <LogOut className="w-5 h-5" strokeWidth={1.8} />
-                התנתק
-              </button>
-            </div>
-          </aside>
-
-          {/* Content */}
-          <section className="md:col-span-9">
-            {activeTab === "orders" && <OrdersTab />}
-            {activeTab === "details" && (
-              <DetailsTab
-                firstName={firstName}
-                setFirstName={setFirstName}
-                lastName={lastName}
-                setLastName={setLastName}
-                email={email}
-                setEmail={setEmail}
-                phone={detailsPhone}
-                setPhone={setDetailsPhone}
-                address={address}
-                setAddress={setAddress}
-                onSave={handleDetailsSave}
-                saved={detailsSaved}
-                inputCls={inputCls}
-              />
-            )}
-          </section>
+      <div className="max-w-3xl mx-auto px-4 py-10">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900">
+            מעקב הזמנה
+          </h1>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 text-sm text-gray-500 hover:text-red-600 transition-colors px-3 py-2 rounded-xl hover:bg-red-50"
+          >
+            <LogOut className="w-4 h-4" strokeWidth={1.8} />
+            התנתק
+          </button>
         </div>
+
+        {order ? (
+          <OrderTracker order={order} onRefresh={refreshOrder} />
+        ) : (
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function OrdersTab() {
+function OrderTracker({
+  order,
+  onRefresh,
+}: {
+  order: Order;
+  onRefresh: () => void;
+}) {
+  const visibleSteps = STATUS_STEP_CONFIG;
+
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-bold text-slate-900">ההזמנות שלי</h2>
-
-      {/* Order Card */}
+      {/* Order Header Card */}
       <div className="rounded-2xl border border-gray-200 p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
           <div>
             <p className="text-sm text-gray-500">הזמנה</p>
-            <p className="text-lg font-bold text-slate-900">#MDL-8472</p>
+            <p className="text-lg font-bold text-slate-900" dir="ltr">
+              {order.orderNumber}
+            </p>
           </div>
-          <div className="text-sm text-gray-500">
-            <span>20-03-2026</span>
+          <div className="flex items-center gap-3">
+            <span
+              className={`inline-block px-3 py-1 rounded-xl text-xs font-bold ${
+                order.status === "completed"
+                  ? "bg-green-100 text-green-700"
+                  : order.status === "shipped"
+                    ? "bg-cyan-100 text-cyan-700"
+                    : order.status === "in_production"
+                      ? "bg-blue-100 text-blue-700"
+                      : order.status === "pending_approval"
+                        ? "bg-amber-100 text-amber-700"
+                        : "bg-gray-100 text-gray-700"
+              }`}
+            >
+              {ORDER_STATUS_LABELS[order.status]}
+            </span>
+            <button
+              onClick={onRefresh}
+              className="text-xs text-gray-400 hover:text-black transition-colors"
+              title="רענן"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182"
+                />
+              </svg>
+            </button>
           </div>
         </div>
+        <p className="text-sm text-gray-500">
+          {new Date(order.createdAt).toLocaleDateString("he-IL", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          })}
+        </p>
+      </div>
 
-        <div className="flex items-center gap-4 mb-8 pb-6 border-b border-gray-100">
-          <div className="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
-            <Package className="w-7 h-7 text-gray-400" strokeWidth={1.5} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold text-slate-900">מודלו סיטיז - תל אביב</p>
-            <p className="text-sm text-gray-500 mt-0.5">כמות: 1</p>
-          </div>
-          <p className="text-lg font-extrabold text-slate-900 shrink-0">₪199</p>
-        </div>
-
-        {/* Progress Tracker */}
+      {/* Progress Tracker */}
+      <div className="rounded-2xl border border-gray-200 p-6">
+        <h2 className="text-sm font-bold text-gray-500 mb-6 uppercase tracking-wider">
+          מצב הזמנה
+        </h2>
         <div className="relative">
           <div className="flex items-start justify-between">
-            {ORDER_STEPS.map((step, i) => {
-              const Icon = stepIcons[i];
-              const isDone = step.status === "done";
-              const isCurrent = step.status === "current";
-              const isPending = step.status === "pending";
+            {visibleSteps.map((step) => {
+              const Icon = step.icon;
+              const state = getStepState(order.status, step.status);
+              const isDone = state === "done";
+              const isCurrent = state === "current";
 
               return (
-                <div key={step.label} className="flex flex-col items-center flex-1 relative z-10">
+                <div
+                  key={step.status}
+                  className="flex flex-col items-center flex-1 relative z-10"
+                >
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all ${
                       isDone
@@ -293,7 +364,10 @@ function OrdersTab() {
                           : "bg-white border-gray-300 text-gray-400"
                     }`}
                   >
-                    <Icon className="w-5 h-5" strokeWidth={isPending ? 1.5 : 2} />
+                    <Icon
+                      className="w-5 h-5"
+                      strokeWidth={state === "pending" ? 1.5 : 2}
+                    />
                   </div>
                   <p
                     className={`mt-2 text-xs font-medium text-center ${
@@ -312,86 +386,178 @@ function OrdersTab() {
           </div>
 
           {/* Connecting line */}
-          <div className="absolute top-5 right-[12.5%] left-[12.5%] h-0.5 -translate-y-1/2 flex">
-            <div className="flex-1 bg-emerald-500" />
-            <div className="flex-1 bg-emerald-500" />
-            <div className="flex-1 bg-gray-200" />
+          <div className="absolute top-5 right-[10%] left-[10%] h-0.5 -translate-y-1/2 flex">
+            {visibleSteps.slice(0, -1).map((step, i) => {
+              const state = getStepState(order.status, step.status);
+              return (
+                <div
+                  key={i}
+                  className={`flex-1 ${
+                    state === "done" || state === "current"
+                      ? "bg-emerald-500"
+                      : "bg-gray-200"
+                  }`}
+                />
+              );
+            })}
           </div>
         </div>
       </div>
-    </div>
-  );
-}
 
-function DetailsTab({
-  firstName,
-  setFirstName,
-  lastName,
-  setLastName,
-  email,
-  setEmail,
-  phone,
-  setPhone,
-  address,
-  setAddress,
-  onSave,
-  saved,
-  inputCls,
-}: {
-  firstName: string;
-  setFirstName: (v: string) => void;
-  lastName: string;
-  setLastName: (v: string) => void;
-  email: string;
-  setEmail: (v: string) => void;
-  phone: string;
-  setPhone: (v: string) => void;
-  address: string;
-  setAddress: (v: string) => void;
-  onSave: (e: React.FormEvent) => void;
-  saved: boolean;
-  inputCls: string;
-}) {
-  return (
-    <div>
-      <h2 className="text-xl font-bold text-slate-900 mb-6">פרטים אישיים</h2>
-      <form onSubmit={onSave} className="rounded-2xl border border-gray-200 p-6 space-y-5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+      {/* Order Items */}
+      <div className="rounded-2xl border border-gray-200 p-6">
+        <h2 className="text-sm font-bold text-gray-500 mb-4 uppercase tracking-wider">
+          פריטים
+        </h2>
+        <div className="space-y-4">
+          {order.items.map((item, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-4 pb-4 border-b border-gray-100 last:border-b-0 last:pb-0"
+            >
+              <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
+                <Package
+                  className="w-6 h-6 text-gray-400"
+                  strokeWidth={1.5}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-slate-900 text-sm">
+                  {item.kind === "studio_model"
+                    ? item.localizedModelName || item.modelName
+                    : item.title}
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  כמות: {item.quantity}
+                </p>
+              </div>
+              <p className="text-sm font-extrabold text-slate-900 shrink-0">
+                {formatPrice(item.subtotal)}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Order Summary */}
+      <div className="rounded-2xl border border-gray-200 p-6">
+        <h2 className="text-sm font-bold text-gray-500 mb-4 uppercase tracking-wider">
+          סיכום
+        </h2>
+        <div className="space-y-2.5 text-sm">
+          <div className="flex justify-between">
+            <span className="text-gray-500">סכום ביניים</span>
+            <span className="text-foreground">{formatPrice(order.subtotal)}</span>
+          </div>
+          {order.discountAmount && order.discountAmount > 0 && (
+            <div className="flex justify-between text-green-600">
+              <span>הנחה{order.couponCode ? ` (${order.couponCode})` : ""}</span>
+              <span>-{formatPrice(order.discountAmount)}</span>
+            </div>
+          )}
+          <div className="flex justify-between">
+            <span className="text-gray-500">משלוח</span>
+            <span className="text-foreground">
+              {order.shippingCost > 0 ? formatPrice(order.shippingCost) : "חינם"}
+            </span>
+          </div>
+          <div className="flex justify-between border-t border-gray-200 pt-2.5">
+            <span className="font-bold text-slate-900">סה&quot;כ</span>
+            <span className="font-extrabold text-lg text-slate-900">
+              {formatPrice(order.total)}
+            </span>
+          </div>
+          <div className="flex justify-between text-xs pt-1">
+            <span className="text-gray-500">אופן קבלה</span>
+            <span className="text-foreground">
+              {DELIVERY_METHOD_LABELS[order.deliveryMethod]}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Customer Details */}
+      <div className="rounded-2xl border border-gray-200 p-6">
+        <h2 className="text-sm font-bold text-gray-500 mb-4 uppercase tracking-wider">
+          פרטי לקוח
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">שם פרטי</label>
-            <input value={firstName} onChange={(e) => setFirstName(e.target.value)} className={inputCls} />
+            <span className="text-gray-500 text-xs">שם</span>
+            <p className="font-medium text-slate-900">
+              {order.customer.fullName}
+            </p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">שם משפחה</label>
-            <input value={lastName} onChange={(e) => setLastName(e.target.value)} className={inputCls} />
+            <span className="text-gray-500 text-xs">טלפון</span>
+            <p className="font-medium text-slate-900" dir="ltr">
+              {order.customer.phone}
+            </p>
+          </div>
+          <div>
+            <span className="text-gray-500 text-xs">אימייל</span>
+            <p className="font-medium text-slate-900" dir="ltr">
+              {order.customer.email}
+            </p>
+          </div>
+          {order.customer.city && (
+            <div>
+              <span className="text-gray-500 text-xs">עיר</span>
+              <p className="font-medium text-slate-900">
+                {order.customer.city}
+              </p>
+            </div>
+          )}
+          {order.customer.address && (
+            <div className="sm:col-span-2">
+              <span className="text-gray-500 text-xs">כתובת</span>
+              <p className="font-medium text-slate-900">
+                {order.customer.address}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Status History */}
+      {order.statusHistory && order.statusHistory.length > 0 && (
+        <div className="rounded-2xl border border-gray-200 p-6">
+          <h2 className="text-sm font-bold text-gray-500 mb-4 uppercase tracking-wider">
+            היסטוריית סטטוס
+          </h2>
+          <div className="space-y-0">
+            {order.statusHistory.map((entry, i) => (
+              <div key={i} className="flex gap-3 relative">
+                <div className="flex flex-col items-center">
+                  <div
+                    className={`w-2.5 h-2.5 rounded-full mt-1.5 ${
+                      i === order.statusHistory.length - 1
+                        ? "bg-black ring-4 ring-gray-100"
+                        : "bg-gray-300"
+                    }`}
+                  />
+                  {i < order.statusHistory.length - 1 && (
+                    <div className="w-px flex-1 bg-gray-200 my-1" />
+                  )}
+                </div>
+                <div className="pb-4">
+                  <p className="text-xs font-semibold text-slate-900">
+                    {ORDER_STATUS_LABELS[entry.status]}
+                  </p>
+                  <p className="text-[10px] text-gray-500">
+                    {new Date(entry.timestamp).toLocaleString("he-IL")}
+                  </p>
+                  {entry.note && (
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      {entry.note}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">אימייל</label>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={`${inputCls} text-left`} dir="ltr" />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">טלפון</label>
-          <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className={`${inputCls} text-left`} dir="ltr" />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">כתובת למשלוח</label>
-          <input value={address} onChange={(e) => setAddress(e.target.value)} className={inputCls} />
-        </div>
-
-        <div className="pt-2">
-          <button
-            type="submit"
-            className="rounded-xl bg-black px-8 py-3 text-white font-bold text-sm hover:bg-slate-800 transition-all flex items-center gap-2"
-          >
-            {saved && <CheckCircle2 className="w-4 h-4" />}
-            {saved ? "השינויים נשמרו" : "שמור שינויים"}
-          </button>
-        </div>
-      </form>
+      )}
     </div>
   );
 }

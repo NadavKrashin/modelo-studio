@@ -34,6 +34,15 @@ export function OrdersClient() {
   const [dataLoading, setDataLoading] = useState(true);
   const [dataError, setDataError] = useState<string | null>(null);
 
+  // IMPORTANT: Hooks must be called unconditionally. These state declarations
+  // are therefore placed before any early returns.
+  const [filterStatus, setFilterStatus] = useState<OrderStatus | ''>(
+    (searchParams.get('status') as OrderStatus) || '',
+  );
+  const [selectedId, setSelectedId] = useState<string | null>(searchParams.get('selected'));
+  const [actionLoading, setActionLoading] = useState(false);
+  const [statusNote, setStatusNote] = useState('');
+
   useEffect(() => {
     let cancelled = false;
 
@@ -66,6 +75,16 @@ export function OrdersClient() {
     return () => { cancelled = true; };
   }, []);
 
+  const filtered = useMemo(() => {
+    if (!filterStatus) return orders;
+    return orders.filter((o) => o.status === filterStatus);
+  }, [orders, filterStatus]);
+
+  const selected = useMemo(
+    () => orders.find((o) => o.id === selectedId) ?? null,
+    [orders, selectedId]
+  );
+
   if (dataLoading) {
     return (
       <div className="animate-fade-in space-y-4">
@@ -86,22 +105,6 @@ export function OrdersClient() {
       </div>
     );
   }
-  const [filterStatus, setFilterStatus] = useState<OrderStatus | ''>(
-    (searchParams.get('status') as OrderStatus) || ''
-  );
-  const [selectedId, setSelectedId] = useState<string | null>(searchParams.get('selected'));
-  const [actionLoading, setActionLoading] = useState(false);
-  const [statusNote, setStatusNote] = useState('');
-
-  const filtered = useMemo(() => {
-    if (!filterStatus) return orders;
-    return orders.filter((o) => o.status === filterStatus);
-  }, [orders, filterStatus]);
-
-  const selected = useMemo(
-    () => orders.find((o) => o.id === selectedId) ?? null,
-    [orders, selectedId]
-  );
 
   async function updateOrderStatus(orderId: string, newStatus: OrderStatus, note?: string) {
     setActionLoading(true);
@@ -199,17 +202,17 @@ export function OrdersClient() {
                       }`}
                     >
                       <td className="px-4 py-3">
-                        <span className="font-bold text-foreground text-xs" dir="ltr">{order.orderNumber}</span>
+                        <span className="font-bold text-foreground text-xs" dir="ltr">{order.orderNumber ?? ''}</span>
                         {order.requiresApproval && (
                           <span className="me-1.5 inline-block w-1.5 h-1.5 rounded-full bg-warning" title="דורש אישור" />
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <p className="font-medium text-foreground text-xs">{order.customer.fullName}</p>
-                        <p className="text-[10px] text-muted" dir="ltr">{order.customer.email}</p>
+                        <p className="font-medium text-foreground text-xs">{order.customer?.fullName ?? ''}</p>
+                        <p className="text-[10px] text-muted" dir="ltr">{order.customer?.email ?? ''}</p>
                       </td>
-                      <td className="px-4 py-3 hidden sm:table-cell text-muted">{order.items.length}</td>
-                      <td className="px-4 py-3 font-bold text-foreground">{formatPrice(order.total)}</td>
+                      <td className="px-4 py-3 hidden sm:table-cell text-muted">{order.items?.length ?? 0}</td>
+                      <td className="px-4 py-3 font-bold text-foreground">{formatPrice(order.total ?? 0)}</td>
                       <td className="px-4 py-3 hidden md:table-cell text-muted text-xs">{DELIVERY_METHOD_LABELS[order.deliveryMethod]}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-block px-2 py-0.5 rounded-lg text-[11px] font-semibold ${STATUS_COLORS[order.status]}`}>
@@ -268,10 +271,15 @@ export function OrdersClient() {
                 <section>
                   <h3 className="text-xs font-bold text-muted mb-2 uppercase tracking-wider">פרטי לקוח</h3>
                   <div className="bg-muted-bg/50 rounded-xl p-3.5 space-y-1.5 text-sm">
-                    <p className="font-semibold text-foreground">{selected.customer.fullName}</p>
-                    <p className="text-muted" dir="ltr">{selected.customer.email}</p>
-                    <p className="text-muted" dir="ltr">{selected.customer.phone}</p>
-                    {selected.customer.city && <p className="text-muted">{selected.customer.city}{selected.customer.address ? ` — ${selected.customer.address}` : ''}</p>}
+                    <p className="font-semibold text-foreground">{selected.customer?.fullName ?? ''}</p>
+                    <p className="text-muted" dir="ltr">{selected.customer?.email ?? ''}</p>
+                    <p className="text-muted" dir="ltr">{selected.customer?.phone ?? ''}</p>
+                    {selected.customer?.city && (
+                      <p className="text-muted">
+                        {selected.customer.city}
+                        {selected.customer.address ? ` — ${selected.customer.address}` : ''}
+                      </p>
+                    )}
                   </div>
                 </section>
 
@@ -279,7 +287,7 @@ export function OrdersClient() {
                 <section>
                   <h3 className="text-xs font-bold text-muted mb-2 uppercase tracking-wider">פריטים והתאמות</h3>
                   <div className="space-y-3">
-                    {selected.items.map((item, i) => (
+                    {(selected.items ?? []).map((item, i) => (
                       <div key={i} className="bg-muted-bg/50 rounded-xl p-3.5">
                         <div className="flex items-start justify-between mb-2">
                           <p className="font-semibold text-sm text-foreground">
@@ -382,15 +390,17 @@ export function OrdersClient() {
                   <div className="bg-muted-bg/50 rounded-xl p-3.5 space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted">סכום ביניים</span>
-                      <span className="text-foreground">{formatPrice(selected.subtotal)}</span>
+                      <span className="text-foreground">{formatPrice(selected.subtotal ?? 0)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted">משלוח</span>
-                      <span className="text-foreground">{selected.shippingCost > 0 ? formatPrice(selected.shippingCost) : 'חינם'}</span>
+                      <span className="text-foreground">
+                        {(selected.shippingCost ?? 0) > 0 ? formatPrice(selected.shippingCost ?? 0) : 'חינם'}
+                      </span>
                     </div>
                     <div className="flex justify-between border-t border-border pt-2">
                       <span className="font-bold text-foreground">סה&quot;כ</span>
-                      <span className="font-extrabold text-primary text-base">{formatPrice(selected.total)}</span>
+                      <span className="font-extrabold text-primary text-base">{formatPrice(selected.total ?? 0)}</span>
                     </div>
                     <div className="flex justify-between text-xs">
                       <span className="text-muted">קבלה</span>
@@ -410,13 +420,13 @@ export function OrdersClient() {
                 <section>
                   <h3 className="text-xs font-bold text-muted mb-2 uppercase tracking-wider">היסטוריית סטטוס</h3>
                   <div className="space-y-0">
-                    {selected.statusHistory.map((entry, i) => (
+                    {(selected.statusHistory ?? []).map((entry, i) => (
                       <div key={i} className="flex gap-3 relative">
                         <div className="flex flex-col items-center">
                           <div className={`w-2.5 h-2.5 rounded-full mt-1.5 ${
-                            i === selected.statusHistory.length - 1 ? 'bg-primary ring-4 ring-primary/10' : 'bg-gray-300'
+                            i === (selected.statusHistory?.length ?? 0) - 1 ? 'bg-primary ring-4 ring-primary/10' : 'bg-gray-300'
                           }`} />
-                          {i < selected.statusHistory.length - 1 && (
+                          {i < (selected.statusHistory?.length ?? 0) - 1 && (
                             <div className="w-px flex-1 bg-gray-200 my-1" />
                           )}
                         </div>
