@@ -65,6 +65,10 @@ class ServiceContainer {
       ? createFirestoreAnalyticsRepository(this.orders)
       : new InMemoryAnalyticsRepository(this.orders);
 
+    console.log(
+      `${TAG} Repository mode — orders=${this.orders.constructor.name}, filaments=${this.filaments.constructor.name}, analytics=${this.analytics.constructor.name}`,
+    );
+
     // ── Provider infrastructure (real providers only) ──────
     this.providerCache = new ProviderCache();
     this.providerRegistry = new ProviderRegistry();
@@ -152,11 +156,30 @@ export const getCategoryRepo = () => getContainer().categories;
 export const getAnalyticsRepo = () => getContainer().analytics;
 
 function hasFirebaseAdminRuntimeConfig(): boolean {
-  const hasProjectId = !!process.env.FIREBASE_PROJECT_ID;
+  // Explicit credential paths (local/dev or injected secrets)
+  const hasProjectId =
+    !!process.env.FIREBASE_PROJECT_ID || !!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
   const hasClientEmail = !!process.env.FIREBASE_CLIENT_EMAIL;
   const hasPrivateKey = !!process.env.PRIVATE_KEY_FB;
   const hasServiceAccountJson = !!process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-  return hasProjectId && (hasServiceAccountJson || (hasClientEmail && hasPrivateKey));
+
+  // Runtime signals for managed GCP/Firebase environments where ADC is available.
+  const hasManagedRuntimeSignals =
+    !!process.env.K_SERVICE ||
+    !!process.env.FUNCTION_TARGET ||
+    !!process.env.GOOGLE_CLOUD_PROJECT ||
+    !!process.env.GCLOUD_PROJECT;
+
+  // Allow Firestore-backed repositories whenever either:
+  // 1) explicit credentials are available, or
+  // 2) a project id exists (ADC may still resolve locally via gcloud/firebase tooling), or
+  // 3) we have managed runtime signals.
+  return (
+    hasServiceAccountJson ||
+    (hasProjectId && hasClientEmail && hasPrivateKey) ||
+    hasProjectId ||
+    hasManagedRuntimeSignals
+  );
 }
 
 function createFirestoreOrderRepository(): OrderRepository {

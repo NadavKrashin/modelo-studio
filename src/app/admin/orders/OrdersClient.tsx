@@ -1,7 +1,17 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+} from 'firebase/firestore';
+import { getFirebaseClientFirestore } from '@/lib/firebase/client';
+import { FIRESTORE_COLLECTIONS } from '@/lib/firebase/firestore';
+import { mapOrderDoc } from '@/lib/firebase/map-order-doc';
 import type { Order, OrderStatus } from '@/lib/types';
 import type { FilamentOption } from '@/lib/types';
 import { ORDER_STATUS_LABELS, DELIVERY_METHOD_LABELS } from '@/lib/types/order';
@@ -28,14 +38,13 @@ function nextStatuses(current: OrderStatus): OrderStatus[] {
 export function OrdersClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const db = useMemo(() => getFirebaseClientFirestore(), []);
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [filamentOptions, setFilamentOptions] = useState<FilamentOption[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [dataError, setDataError] = useState<string | null>(null);
 
-  // IMPORTANT: Hooks must be called unconditionally. These state declarations
-  // are therefore placed before any early returns.
   const [filterStatus, setFilterStatus] = useState<OrderStatus | ''>(
     (searchParams.get('status') as OrderStatus) || '',
   );
@@ -43,37 +52,47 @@ export function OrdersClient() {
   const [actionLoading, setActionLoading] = useState(false);
   const [statusNote, setStatusNote] = useState('');
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadData = useCallback(async () => {
+    try {
+      const [ordersSnap, filamentsSnap] = await Promise.all([
+        getDocs(collection(db, FIRESTORE_COLLECTIONS.orders)),
+        getDocs(collection(db, FIRESTORE_COLLECTIONS.filaments)),
+      ]);
 
-    async function load() {
-      try {
-        const [ordersRes, filamentsRes] = await Promise.all([
-          fetch('/api/admin/orders?pageSize=100'),
-          fetch('/api/admin/filaments'),
-        ]);
-        if (!ordersRes.ok || !filamentsRes.ok) {
-          if (!cancelled) setDataError('שגיאה בטעינת נתונים');
-          return;
-        }
-        const ordersData = await ordersRes.json();
-        const filamentsData = await filamentsRes.json();
-        if (!cancelled) {
-          setOrders(ordersData.items ?? []);
-          setFilamentOptions(
-            (filamentsData as { id: string; localizedColorName: string; colorHex: string }[]).map((f) => f as unknown as FilamentOption),
-          );
-        }
-      } catch {
-        if (!cancelled) setDataError('שגיאת רשת');
-      } finally {
-        if (!cancelled) setDataLoading(false);
-      }
+      const loadedOrders: Order[] = [];
+      ordersSnap.forEach((d) => {
+        loadedOrders.push(mapOrderDoc(d.id, d.data() as Record<string, unknown>));
+      });
+      loadedOrders.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+      const loadedFilaments: FilamentOption[] = [];
+      filamentsSnap.forEach((d) => {
+        const raw = d.data() as Record<string, unknown>;
+        loadedFilaments.push({
+          id: d.id,
+          name: (raw.name as string) ?? d.id,
+          localizedName: (raw.localizedName as string) ?? (raw.name as string) ?? d.id,
+          material: (raw.materialType ?? raw.material ?? 'PLA') as FilamentOption['material'],
+          colorHex: (raw.hexColor ?? raw.colorHex ?? '#999') as string,
+          colorName: (raw.colorName as string) ?? '',
+          localizedColorName: (raw.localizedColorName ?? raw.colorName ?? d.id) as string,
+          priceModifier: (raw.priceModifier as number) ?? 0,
+          inStock: (raw.available ?? raw.inStock ?? true) as boolean,
+          isPopular: (raw.isPopular as boolean) ?? false,
+        });
+      });
+
+      setOrders(loadedOrders);
+      setFilamentOptions(loadedFilaments);
+    } catch (e) {
+      console.error('[OrdersClient] Firestore load error:', e);
+      setDataError(`שגיאה בטעינת נתונים: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setDataLoading(false);
     }
+  }, [db]);
 
-    load();
-    return () => { cancelled = true; };
-  }, []);
+  useEffect(() => { void loadData(); }, [loadData]);
 
   const filtered = useMemo(() => {
     if (!filterStatus) return orders;
@@ -109,13 +128,27 @@ export function OrdersClient() {
   async function updateOrderStatus(orderId: string, newStatus: OrderStatus, note?: string) {
     setActionLoading(true);
     try {
-      const res = await fetch(`/api/orders/${orderId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus, note }),
-      });
-      if (!res.ok) throw new Error('Failed to update');
-      const updated: Order = await res.json();
+      const ref = doc(db, FIRESTORE_COLLECTIONS.orders, orderId);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) throw new Error('Order not found');
+
+      const current = mapOrderDoc(snap.id, snap.data() as Record<string, unknown>);
+      const updatedAt = new Date().toISOString();
+      const updated: Order = {
+        ...current,
+        status: newStatus,
+        updatedAt,
+        approvedAt:
+          newStatus === 'in_production' && current.requiresApproval && !current.approvedAt
+            ? updatedAt
+            : current.approvedAt,
+        statusHistory: [
+          ...current.statusHistory,
+          { status: newStatus, timestamp: updatedAt, note },
+        ],
+      };
+
+      await setDoc(ref, updated);
       setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
       setStatusNote('');
     } catch {

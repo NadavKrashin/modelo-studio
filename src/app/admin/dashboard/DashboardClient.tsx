@@ -1,7 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { collection, getDocs } from 'firebase/firestore';
+import { getFirebaseClientFirestore } from '@/lib/firebase/client';
+import { FIRESTORE_COLLECTIONS } from '@/lib/firebase/firestore';
+import { mapOrderDoc } from '@/lib/firebase/map-order-doc';
 import type { AdminStats } from '@/lib/types/admin';
 import type { Order } from '@/lib/types/order';
 import { ORDER_STATUS_LABELS } from '@/lib/types/order';
@@ -10,44 +14,68 @@ function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
 }
 
+function computeStats(orders: Order[]): AdminStats {
+  const totalOrders = orders.length;
+  const totalRevenue = orders.reduce((sum, o) => sum + (o.total ?? 0), 0);
+  const pendingApprovals = orders.filter((o) => o.status === 'pending_approval').length;
+  const activeOrders = orders.filter((o) => o.status !== 'completed').length;
+  const ordersAwaitingApproval = orders.filter((o) => o.status === 'pending_approval');
+
+  const now = new Date();
+  const revenueByDay: AdminStats['revenueByDay'] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().slice(0, 10);
+    const dayOrders = orders.filter((o) => o.createdAt?.slice(0, 10) === dateStr);
+    revenueByDay.push({
+      date: dateStr,
+      revenue: dayOrders.reduce((s, o) => s + (o.total ?? 0), 0),
+      orderCount: dayOrders.length,
+    });
+  }
+
+  return {
+    totalOrders,
+    totalRevenue,
+    pendingApprovals,
+    activeOrders,
+    topCategories: [],
+    topSearchTerms: [],
+    revenueByDay,
+    recentOrders: orders.slice(0, 5),
+    ordersAwaitingApproval,
+  };
+}
+
 export function DashboardClient() {
+  const db = useMemo(() => getFirebaseClientFirestore(), []);
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadData = useCallback(async () => {
+    try {
+      const snap = await getDocs(collection(db, FIRESTORE_COLLECTIONS.orders));
+      const orders: Order[] = [];
+      snap.forEach((d) => {
+        orders.push(mapOrderDoc(d.id, d.data() as Record<string, unknown>));
+      });
+      orders.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
-    async function load() {
-      try {
-        const [statsRes, ordersRes] = await Promise.all([
-          fetch('/api/admin/analytics'),
-          fetch('/api/admin/orders?pageSize=5'),
-        ]);
-
-        if (!statsRes.ok || !ordersRes.ok) {
-          if (!cancelled) setError('שגיאה בטעינת נתונים');
-          return;
-        }
-
-        const statsData: AdminStats = await statsRes.json();
-        const ordersData = await ordersRes.json();
-
-        if (!cancelled) {
-          setStats(statsData);
-          setRecentOrders(ordersData.items ?? []);
-        }
-      } catch {
-        if (!cancelled) setError('שגיאת רשת');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+      const computed = computeStats(orders);
+      setStats(computed);
+      setRecentOrders(orders.slice(0, 5));
+    } catch (e) {
+      console.error('[DashboardClient] Firestore load error:', e);
+      setError(`שגיאה בטעינת נתונים: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setLoading(false);
     }
+  }, [db]);
 
-    load();
-    return () => { cancelled = true; };
-  }, []);
+  useEffect(() => { void loadData(); }, [loadData]);
 
   if (loading) return <DashboardSkeleton />;
   if (error || !stats) {

@@ -77,19 +77,18 @@ export class FirestoreAnalyticsRepository implements AnalyticsRepository {
 
   private async getTopSearchTerms(limit: number) {
     const db = getFirestoreAdmin();
-    const snap = await db
-      .collection(FIRESTORE_COLLECTIONS.searchTerms)
-      .orderBy('count', 'desc')
-      .limit(limit)
-      .get();
-    return snap.docs.map((doc) => {
-      const data = doc.data() as SearchTermDoc;
-      return {
-        term: data.term,
-        count: data.count,
-        lastSearchedAt: data.lastSearchedAt,
-      };
-    });
+    // DEBUG: fetch all docs first (no orderBy/limit) to verify we can see data.
+    const snap = await db.collection(FIRESTORE_COLLECTIONS.searchTerms).get();
+    console.log("Firestore fetch count:", snap.size);
+
+    const all = snap.docs.map((doc) => doc.data() as SearchTermDoc);
+    all.sort((a, b) => (b.count ?? 0) - (a.count ?? 0));
+
+    return all.slice(0, limit).map((data) => ({
+      term: data.term,
+      count: data.count,
+      lastSearchedAt: data.lastSearchedAt,
+    }));
   }
 
   private computeTopCategories(orders: Order[]) {

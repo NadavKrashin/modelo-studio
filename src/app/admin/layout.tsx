@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { FileText, Settings } from 'lucide-react';
@@ -94,15 +94,55 @@ const NAV_ITEMS = [
   },
 ];
 
+type AuthState = 'loading' | 'authenticated' | 'unauthenticated';
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [authState, setAuthState] = useState<AuthState>('loading');
+
+  const isLoginPage = pathname === '/admin/login';
+
+  const checkSession = useCallback(() => {
+    if (isLoginPage) return;
+    fetch('/api/admin/me')
+      .then((res) => {
+        setAuthState(res.ok ? 'authenticated' : 'unauthenticated');
+      })
+      .catch(() => setAuthState('unauthenticated'));
+  }, [isLoginPage]);
+
+  useEffect(() => {
+    checkSession();
+  }, [checkSession]);
+
+  useEffect(() => {
+    if (!isLoginPage && authState === 'unauthenticated') {
+      router.replace('/admin/login');
+    }
+  }, [authState, isLoginPage, router]);
+
+  // Login page renders full-screen without admin chrome or auth gate.
+  if (isLoginPage) return <>{children}</>;
+
+  if (authState === 'loading') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-muted">אימות הרשאות…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (authState === 'unauthenticated') return null;
 
   async function handleLogout() {
     await fetch('/api/admin/logout', { method: 'POST' });
-    router.replace('/admin/dashboard');
-    router.refresh();
+    setAuthState('unauthenticated');
+    router.replace('/admin/login');
   }
 
   return (
