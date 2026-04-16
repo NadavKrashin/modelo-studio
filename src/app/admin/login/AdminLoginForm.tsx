@@ -36,8 +36,21 @@ export function AdminLoginForm() {
         return;
       }
       const safeFrom = from.startsWith('/admin') && !from.startsWith('/admin/login') ? from : '/admin/dashboard';
-      router.refresh();
-      router.push(safeFrom);
+
+      try {
+        router.refresh();
+        router.push(safeFrom);
+      } catch {
+        // router.push can silently fail if the RSC payload errors; hard-navigate as fallback.
+      }
+
+      // Safety net: if the client router hasn't navigated within 2 s, force a hard redirect.
+      setTimeout(() => {
+        if (window.location.pathname.includes('/login')) {
+          window.location.href = safeFrom;
+        }
+      }, 2000);
+
       return;
     } catch {
       setError('שגיאת רשת. נסו שוב.');

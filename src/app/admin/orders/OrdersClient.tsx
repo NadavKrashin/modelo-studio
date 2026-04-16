@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import type { Order, OrderStatus } from '@/lib/types';
 import type { FilamentOption } from '@/lib/types';
@@ -25,16 +25,67 @@ function nextStatuses(current: OrderStatus): OrderStatus[] {
   return STATUS_FLOW.slice(idx + 1);
 }
 
-interface Props {
-  initialOrders: Order[];
-  filamentOptions: FilamentOption[];
-}
-
-export function OrdersClient({ initialOrders, filamentOptions }: Props) {
+export function OrdersClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [orders, setOrders] = useState(initialOrders);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [filamentOptions, setFilamentOptions] = useState<FilamentOption[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [dataError, setDataError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const [ordersRes, filamentsRes] = await Promise.all([
+          fetch('/api/admin/orders?pageSize=100'),
+          fetch('/api/admin/filaments'),
+        ]);
+        if (!ordersRes.ok || !filamentsRes.ok) {
+          if (!cancelled) setDataError('שגיאה בטעינת נתונים');
+          return;
+        }
+        const ordersData = await ordersRes.json();
+        const filamentsData = await filamentsRes.json();
+        if (!cancelled) {
+          setOrders(ordersData.items ?? []);
+          setFilamentOptions(
+            (filamentsData as { id: string; localizedColorName: string; colorHex: string }[]).map((f) => f as unknown as FilamentOption),
+          );
+        }
+      } catch {
+        if (!cancelled) setDataError('שגיאת רשת');
+      } finally {
+        if (!cancelled) setDataLoading(false);
+      }
+    }
+
+    load();
+    return () => { cancelled = true; };
+  }, []);
+
+  if (dataLoading) {
+    return (
+      <div className="animate-fade-in space-y-4">
+        <div className="h-10 w-48 skeleton rounded-lg" />
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-16 skeleton rounded-xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (dataError) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-sm text-red-500">{dataError}</p>
+      </div>
+    );
+  }
   const [filterStatus, setFilterStatus] = useState<OrderStatus | ''>(
     (searchParams.get('status') as OrderStatus) || ''
   );

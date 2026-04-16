@@ -1,25 +1,13 @@
 import { Suspense } from 'react';
 import { OrdersClient } from './OrdersClient';
-import { stripOrderLookupToken } from '@/lib/admin-session';
-import { getOrderService, getFilamentService } from '@/lib/services/container';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export default async function AdminOrdersPage() {
-  const orderService = getOrderService();
-  const filamentService = getFilamentService();
-  const result = await orderService.listOrders({ page: 1, pageSize: 100 });
-  const filamentOptions = await filamentService.getAllFilamentOptions();
-
+export default function AdminOrdersPage() {
   return (
     <Suspense fallback={<OrdersSkeleton />}>
-      <OrdersClient
-        initialOrders={JSON.parse(
-          JSON.stringify(result.items.map((o) => stripOrderLookupToken(o))),
-        )}
-        filamentOptions={filamentOptions}
-      />
+      <OrdersClient />
     </Suspense>
   );
 }
