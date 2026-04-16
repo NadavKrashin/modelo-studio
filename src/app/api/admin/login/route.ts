@@ -32,13 +32,15 @@ export async function POST(request: Request) {
     }
 
     const token = await createAdminJwt();
+    console.log('[admin/login] JWT created, setting cookie:', ADMIN_JWT_COOKIE);
+
     const res = NextResponse.json({ ok: true });
     res.cookies.set(ADMIN_JWT_COOKIE, token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 60 * 60 * 24 * 7,
     });
     return res;
   } catch (err) {

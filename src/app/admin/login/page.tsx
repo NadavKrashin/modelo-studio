@@ -1,11 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function AdminLoginPage() {
-  const router = useRouter();
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -15,48 +13,49 @@ export default function AdminLoginPage() {
     fetch('/api/admin/me')
       .then((res) => {
         if (res.ok) {
-          router.replace('/admin/dashboard');
+          console.log('[Login] Already authenticated — redirecting to dashboard');
+          window.location.href = '/admin/dashboard';
         } else {
           setChecking(false);
         }
       })
       .catch(() => setChecking(false));
-  }, [router]);
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
+
     try {
+      console.log('[Login] Submitting password…');
       const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password }),
       });
 
+      console.log('[Login] Response status:', res.status);
+
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
+        console.log('[Login] Error payload:', data);
         if (data.error === 'Invalid credentials') {
           setError('סיסמה שגויה');
         } else if (data.error === 'Server misconfiguration') {
           setError('שגיאת תצורת שרת — ADMIN_PASSWORD לא מוגדר.');
         } else {
-          setError('התחברות נכשלה');
+          setError(data.error || 'התחברות נכשלה');
         }
+        setLoading(false);
         return;
       }
 
-      router.replace('/admin/dashboard');
-      router.refresh();
-
-      setTimeout(() => {
-        if (window.location.pathname.includes('/login')) {
-          window.location.href = '/admin/dashboard';
-        }
-      }, 2000);
-    } catch {
+      console.log('[Login] Success — hard-redirecting to /admin/dashboard');
+      window.location.href = '/admin/dashboard';
+    } catch (err) {
+      console.error('[Login] Network error:', err);
       setError('שגיאת רשת. נסו שוב.');
-    } finally {
       setLoading(false);
     }
   }

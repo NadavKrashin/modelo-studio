@@ -1,6 +1,6 @@
 import { SignJWT, jwtVerify } from 'jose';
 
-export const ADMIN_JWT_COOKIE = 'admin_session';
+export const ADMIN_JWT_COOKIE = '__session';
 
 const DEV_FALLBACK_SECRET = 'dev-only-insecure-admin-jwt-secret-min-32-chars!!';
 
