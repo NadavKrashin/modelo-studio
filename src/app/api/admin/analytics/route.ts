@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
+import { requireAdminAuth } from '@/lib/api/admin-auth';
 import { getAnalyticsRepo } from '@/lib/services/container';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function GET() {
+  const unauthorized = await requireAdminAuth();
+  if (unauthorized) return unauthorized;
+
   try {
     const analytics = getAnalyticsRepo();
     const stats = await analytics.getStats();
@@ -13,8 +17,7 @@ export async function GET() {
 
     return NextResponse.json(stats);
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
     console.error('[API Error] /api/admin/analytics:', err);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

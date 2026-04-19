@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { stripOrderLookupToken } from '@/lib/admin-session';
+import { requireAdminAuth } from '@/lib/api/admin-auth';
 import { getOrderService } from '@/lib/services/container';
 import { parseBody } from '@/lib/validation/api-helpers';
 import { orderStatusUpdateSchema } from '@/lib/validation';
@@ -8,6 +9,9 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const unauthorized = await requireAdminAuth();
+  if (unauthorized) return unauthorized;
+
   const { id } = await params;
 
   if (!id) {

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { stripOrderLookupToken } from '@/lib/admin-session';
+import { requireAdminAuth } from '@/lib/api/admin-auth';
 import { parseSearchParams } from '@/lib/validation/api-helpers';
 import { adminOrdersQuerySchema } from '@/lib/validation';
 import { getOrderService } from '@/lib/services/container';
@@ -8,6 +9,9 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function GET(request: Request) {
+  const unauthorized = await requireAdminAuth();
+  if (unauthorized) return unauthorized;
+
   const result = parseSearchParams(request.url, adminOrdersQuerySchema);
   if (result.error) return result.error;
 
@@ -28,8 +32,7 @@ export async function GET(request: Request) {
       items,
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
     console.error('[API Error] /api/admin/orders:', err);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

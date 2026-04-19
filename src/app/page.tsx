@@ -103,30 +103,36 @@ const WORLDS_VISIBLE = WORLDS.filter((w) => w.href !== "/studio");
 export default function HomePage() {
   return (
     <div className="bg-white text-slate-900 font-sans" dir="rtl">
-      {/* ── Hero ── */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-slate-950 to-slate-900">
-        <div className="pointer-events-none absolute inset-0" aria-hidden="true">
-          <div className="absolute -top-40 right-1/4 w-[600px] h-[600px] bg-slate-800/40 rounded-full blur-[140px]" />
-          <div className="absolute bottom-0 left-1/3 w-[400px] h-[400px] bg-slate-700/20 rounded-full blur-[100px]" />
-        </div>
-
-        <div className="relative max-w-5xl mx-auto px-6 pt-24 pb-28 md:pt-36 md:pb-40 text-center">
-          <h1 className="text-5xl sm:text-6xl md:text-8xl font-extrabold text-white leading-[1.08] tracking-tight drop-shadow-md mb-6">
-            מודלו: הופכים
-            <br />
-            דמיון לתלת-ממד.
-          </h1>
-          <p className="text-lg md:text-xl text-slate-300 max-w-2xl mx-auto mb-12 leading-relaxed">
-            שירותי הדפסת תלת-ממד פרימיום, אישית ומהירה, מכל העולם ולכל מטרה.
-          </p>
-          <a
-            href="#worlds"
-            className="inline-flex items-center gap-2 rounded-2xl bg-white text-slate-900 px-10 py-4 font-bold text-base hover:bg-slate-100 transition-colors shadow-lg shadow-white/10"
-          >
+      {/* ── Hero (title/subtitle baked into background image; CTA centered on blank area) ── */}
+      <section
+        className="relative flex min-h-[calc(100dvh-6rem)] items-center justify-center overflow-hidden bg-[url('/images/homepage.jpeg')] bg-cover bg-center bg-no-repeat px-4 py-8 sm:px-6"
+        aria-label="מודלו — גלו את העולמות שלנו"
+      >
+        <a
+          href="#worlds"
+          className="group relative inline-flex cursor-pointer items-center justify-center overflow-hidden rounded-full border-none bg-black px-10 py-4 outline-none focus:outline-none focus:ring-0"
+        >
+          {/* Base layer (visible by default) */}
+          <span className="relative z-10 inline-flex items-center gap-2 font-bold tracking-wide text-white whitespace-nowrap">
             גלו את העולמות שלנו
-            <ArrowLeft className="w-4 h-4" strokeWidth={2.5} />
-          </a>
-        </div>
+            <ArrowLeft className="h-4 w-4 shrink-0" strokeWidth={2.5} />
+          </span>
+
+          {/* Sweep overlay (slides in from the left on hover) */}
+          <span
+            aria-hidden="true"
+            className="absolute inset-y-0 left-0 z-20 w-0 overflow-hidden bg-white transition-[width] duration-500 ease-in-out group-hover:w-full"
+          >
+            {/* Ghost copy: same content + padding so its intrinsic width
+                matches the outer button, anchored to the overlay's left edge.
+                This keeps the text in EXACTLY the same spot during the wipe
+                (true split-color), instead of re-centering as the overlay grows. */}
+            <span className="absolute inset-y-0 left-0 inline-flex items-center justify-center gap-2 px-10 font-bold tracking-wide text-black whitespace-nowrap">
+              גלו את העולמות שלנו
+              <ArrowLeft className="h-4 w-4 shrink-0" strokeWidth={2.5} />
+            </span>
+          </span>
+        </a>
       </section>
 
       {/* ── About ── */}

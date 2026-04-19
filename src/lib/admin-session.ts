@@ -17,8 +17,8 @@ export function getJwtSecretBytes(): Uint8Array {
 
 export async function verifyAdminJwt(token: string): Promise<boolean> {
   try {
-    await jwtVerify(token, getJwtSecretBytes());
-    return true;
+    const { payload } = await jwtVerify(token, getJwtSecretBytes());
+    return payload.sub === 'admin';
   } catch {
     return false;
   }
